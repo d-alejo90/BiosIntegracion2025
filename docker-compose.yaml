@@ -1,0 +1,10 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html  # Mount the current directory to /var/www/html in the container
+      - /var/www/html/vendor  # Exclude the vendor directory

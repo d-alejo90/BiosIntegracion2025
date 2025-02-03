@@ -1,0 +1,13 @@
+{
+  "name": "bios/integracion2025",
+  "require": {
+    "phpclassic/php-shopify": "*",
+    "vlucas/phpdotenv": "^5.3",
+    "ext-sqlsrv": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/"
+    }
+  }
+}

@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: php-app
+  labels:
+    app: php-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: php-app
+  template:
+    metadata:
+      labels:
+        app: php-app
+    spec:
+      containers:
+      - name: integracion-2025
+        image: local/integracion-bios-2025:v2  # Reemplaza con tu imagen PHP
+        volumeMounts:
+        - mountPath: /var/www/html  # Ruta en el contenedor
+          name: app-volume
+      volumes:
+      - name: app-volume
+        hostPath:
+          path: /home/dalejo90/Repos/github.com/d-alejo90/BiosIntegracion2025/  # Ruta en tu máquina local
+          type: Directory
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: php-app-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: php-app
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: php-app-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: php-app.local  # Cambia esto por tu dominio o usa "*" para cualquier dominio
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: php-app-service
+            port:
+              number: 80
