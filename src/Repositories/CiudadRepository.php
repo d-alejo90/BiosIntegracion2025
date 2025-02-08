@@ -18,7 +18,7 @@ class CiudadRepository
 
     /**
      * Obtiene todas las ciudades.
-     * 
+     *
      * @return Ciudad[] Lista de ciudades.
      */
     public function findAll(): array

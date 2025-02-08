@@ -36,13 +36,39 @@ class OrderHeadRepository
         return $statement->fetchColumn() > 0;
     }
 
-    public function cancelOrder($orderName, $dateCancel, $CodigoCia)
+    public function cancelOrder($orderName, $CodigoCia)
     {
-        $sql = "UPDATE Order_head SET date_cancel = :date_cancel, cancel = 1 WHERE order_name = :order_name AND CodigoCia = :CodigoCia";
+        $sql = "UPDATE Order_head SET date_cancel = GETDATE(), cancel = '1' WHERE order_name = :order_name AND CodigoCia = :CodigoCia";
         $query = $this->db->prepare($sql);
         $query->execute([
-            ':date_cancel' => $dateCancel,
             ':order_name' => $orderName,
+            ':CodigoCia' => $CodigoCia,
         ]);
+    }
+
+    public function getPendingFulfillments($CodigoCia)
+    {
+        $sql = "SELECT
+        Order_head.*
+        FROM
+        Order_head
+        WHERE Order_head.audit_date >= DATEADD(DAY, -30, CAST(GETDATE() AS DATE))
+        AND Order_head.FacturaSiesa = '1'
+        AND Order_head.Despacho = '0' 
+        AND Order_head.CodigoCia = :CodigoCia";
+        $statement = $this->db->prepare($sql);
+        $statement->execute(['CodigoCia' => $CodigoCia]);
+        return $statement->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    public function updateOrderFulfillmentStatus($orderId, $CodigoCia)
+    {
+        $sql = "UPDATE Order_head SET Despacho = '2', Time_despacho = GETDATE() WHERE order_id = :order_id AND CodigoCia = :CodigoCia";
+        $statement = $this->db->prepare($sql);
+        $statement->execute([
+          ':order_id' => $orderId,
+          ':CodigoCia' => $CodigoCia
+        ]);
+        return $statement->rowCount();
     }
 }

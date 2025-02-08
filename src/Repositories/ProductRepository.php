@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\Product;
 use App\Config\Database;
+use PDO;
 
 class ProductRepository
 {
@@ -26,22 +27,30 @@ class ProductRepository
 
         $products = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $product = new Product();
-            $product->id = $row['id'];
-            $product->sku = $row['sku'];
-            $product->locacion = $row['locacion'];
-            $product->nota = $row['nota'];
-            $product->audit_date = $row['audit_date'];
-            $product->estado = $row['estado'];
-            $product->prod_id = $row['prod_id'];
-            $product->inve_id = $row['inve_id'];
-            $product->vari_id = $row['vari_id'];
-            $product->cia_cod = $row['cia_cod'];
-            $products[] = $product;
+            $products[] = $this->mapProduct($row);
         }
 
         return $products;
     }
+
+    /**
+    * Obtiene productos por su cia_cod
+    */
+    public function findByCia($cia_cod)
+    {
+        $cia_cod = $cia_cod == '232P' ? '20' : $cia_cod; // Para esta tabla el cia_cod 232P se cambia por 20
+        $query = "SELECT * FROM ctrlCreateProducts WHERE cia_cod = :cia_cod";
+        $stmt = $this->db->prepare($query);
+        $stmt->bindParam(':cia_cod', $cia_cod);
+        $stmt->execute();
+        $products = [];
+        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            print_r($row);
+            $products[] = $this->mapProduct($row);
+        }
+        return $products;
+    }
+
 
     /**
      * Obtiene un producto por su ID.
@@ -56,17 +65,7 @@ class ProductRepository
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($row) {
-            $product = new Product();
-            $product->id = $row['id'];
-            $product->sku = $row['sku'];
-            $product->locacion = $row['locacion'];
-            $product->nota = $row['nota'];
-            $product->audit_date = $row['audit_date'];
-            $product->estado = $row['estado'];
-            $product->prod_id = $row['prod_id'];
-            $product->inve_id = $row['inve_id'];
-            $product->vari_id = $row['vari_id'];
-            $product->cia_cod = $row['cia_cod'];
+            $product = $this->mapProduct($row);
             return $product;
         }
 
@@ -129,5 +128,21 @@ class ProductRepository
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(':id', $id);
         return $stmt->execute();
+    }
+
+    private function mapProduct($row)
+    {
+        $product = new Product();
+        $product->id = $row['id'];
+        $product->sku = $row['sku'];
+        $product->locacion = $row['locacion'];
+        $product->nota = $row['nota'];
+        $product->audit_date = $row['audit_date'];
+        $product->estado = $row['estado'];
+        $product->prod_id = $row['prod_id'];
+        $product->inve_id = $row['inve_id'];
+        $product->vari_id = $row['vari_id'];
+        $product->cia_cod = $row['cia_cod'];
+        return $product;
     }
 }

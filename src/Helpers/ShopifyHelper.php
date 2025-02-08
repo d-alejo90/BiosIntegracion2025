@@ -69,4 +69,73 @@ class ShopifyHelper
 
         return $this->shopify->GraphQL->post($query);
     }
+
+    public function getFulfillmentId($orderId)
+    {
+        $response = $this->shopify->GraphQL->post(<<<GQL
+        query getFulfillmentOrderByOrderId(\$id: ID!) {
+            order(id: \$id) {
+                id
+                fulfillmentOrders(first: 1) {
+                    nodes {
+                        id
+                        status
+                    }
+                }
+            }
+        }
+        GQL, null, null, ['id' => "gid://shopify/Order/$orderId"]);
+
+        return $response["data"]["order"]["fulfillmentOrders"]["nodes"][0]['id'] ?? null;
+    }
+
+    public function getFulfillmentDataByOrderIds($orderIdsQuery, $first)
+    {
+        $response = $this->shopify->GraphQL->post(<<<GQL
+        query getFulfillmentDataByOrderIds(\$orderIdsQuery: String, \$first: Int) {
+          orders(first: \$first, query: \$orderIdsQuery) {
+            nodes {
+              id
+              fulfillmentOrders(first: 1) {
+                nodes {
+                  id
+                  status
+                }
+              }
+            }
+          }
+        }
+        GQL, null, null, ['orderIdsQuery' => $orderIdsQuery, 'first' => $first]);
+        return $response["data"]["orders"]["nodes"] ?? null;
+    }
+
+    public function createFulfillment($fulfillmentId)
+    {
+        $createFulfillmentMutation = <<<GQL
+        mutation fulfillmentCreate(\$fulfillment: FulfillmentInput!) {
+            fulfillmentCreate(fulfillment: \$fulfillment) {
+                fulfillment {
+                    id
+                }
+                userErrors {
+                    field
+                    message
+                }
+            }
+        }
+        GQL;
+
+        $variables = [
+            'fulfillment' => [
+                'lineItemsByFulfillmentOrder' => [
+                    [
+                        'fulfillmentOrderId' => $fulfillmentId
+                    ]
+                ],
+                'notifyCustomer' => true
+            ]
+        ];
+
+        return $this->shopify->GraphQL->post($createFulfillmentMutation, null, null, $variables);
+    }
 }

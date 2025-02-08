@@ -12,11 +12,9 @@ use App\Helpers\StoreConfigFactory;
 use App\Models\Customer;
 use App\Models\OrderHead;
 use App\Models\OrderDetail;
-use PgSql\Lob;
+use App\Config\Constants;
 
-require_once __DIR__ . '/../Config/Constants.php';
-
-class OrderService
+class CreateOrderService
 {
     private $orderHeadRepository;
     private $orderDetailRepository;
@@ -25,6 +23,7 @@ class OrderService
     private $shopifyHelper;
     private $codigoCia;
     private $storeName;
+    private $zipCodes;
 
     public function __construct($storeUrl)
     {
@@ -38,6 +37,7 @@ class OrderService
         $config = $storeConfig->getConfig($storeUrl);
         $this->codigoCia = $config['codigoCia'];
         $this->storeName = $config['storeName'];
+        $this->zipCodes = Constants::ZIP_CODES[$this->storeName];
         $this->shopifyHelper = new ShopifyHelper($config['shopifyConfig']);
     }
 
@@ -67,6 +67,12 @@ class OrderService
 
         if (empty($cedulaBilling)) {
             $message = "Fallo en la obtención de cedula de facturacion de Shopify con order ID: $orderId";
+            Logger::log("wh_run_$this->storeName.txt", $message);
+            throw new \Exception($message, 1);
+        }
+
+        if (empty($this->zipCodes[$orderData['shipping_address']['city']])) {
+            $message = "Fallo en la obtención de zip code de Shopify con order ID: $orderId";
             Logger::log("wh_run_$this->storeName.txt", $message);
             throw new \Exception($message, 1);
         }
