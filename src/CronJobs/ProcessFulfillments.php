@@ -62,8 +62,7 @@ class ProcessFulfillments
                         if (isset($response['data']['fulfillmentCreate']['userErrors']) && !empty($response['data']['fulfillmentCreate']['userErrors'])) {
                             Logger::log($this->logFile, "Error en la solicitud para la orden $orderId: " . json_encode($response['data']['fulfillmentCreate']['userErrors']));
                         } else {
-                            $orderId = fulfil
-                            $this->orderHeadRepository->updateOrderFulfillmentStatus($);
+                            $this->orderHeadRepository->updateOrderFulfillmentStatus($orderId, $this->codigoCia);
                             Logger::log($this->logFile, "Orden $orderId procesada con éxito.");
                         }
                     }
