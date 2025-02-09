@@ -27,7 +27,7 @@ class ProductRepository
 
         $products = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $products[] = $this->mapProduct($row);
+            $products[] = Product::fromArray($row);
         }
 
         return $products;
@@ -45,8 +45,7 @@ class ProductRepository
         $stmt->execute();
         $products = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            print_r($row);
-            $products[] = $this->mapProduct($row);
+            $products[] = Product::fromArray($row);
         }
         return $products;
     }
@@ -65,7 +64,7 @@ class ProductRepository
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($row) {
-            $product = $this->mapProduct($row);
+            $product = Product::fromArray($row);
             return $product;
         }
 
@@ -130,19 +129,4 @@ class ProductRepository
         return $stmt->execute();
     }
 
-    private function mapProduct($row)
-    {
-        $product = new Product();
-        $product->id = $row['id'];
-        $product->sku = $row['sku'];
-        $product->locacion = $row['locacion'];
-        $product->nota = $row['nota'];
-        $product->audit_date = $row['audit_date'];
-        $product->estado = $row['estado'];
-        $product->prod_id = $row['prod_id'];
-        $product->inve_id = $row['inve_id'];
-        $product->vari_id = $row['vari_id'];
-        $product->cia_cod = $row['cia_cod'];
-        return $product;
-    }
 }

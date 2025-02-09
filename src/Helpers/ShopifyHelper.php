@@ -17,7 +17,7 @@ class ShopifyHelper
     public function getCedulasByOrderId($orderId)
     {
         $orderId = "gid://shopify/Order/{$orderId}";
-        $query = <<<QUERY
+        $query = <<<GQL
         query {
             order(id: "{$orderId}") {
                 id
@@ -33,7 +33,7 @@ class ShopifyHelper
                 }
             }
         }
-        QUERY;
+        GQL;
 
         return $this->shopify->GraphQL->post($query);
     }
@@ -41,7 +41,7 @@ class ShopifyHelper
     public function getCustomerById($customerId)
     {
         $customerId = "gid://shopify/Customer/{$customerId}";
-        $query = <<<QUERY
+        $query = <<<GQL
         query {
             customer(id: "{$customerId}") {
                 id
@@ -65,7 +65,7 @@ class ShopifyHelper
                 }
             }
         }
-        QUERY;
+        GQL;
 
         return $this->shopify->GraphQL->post($query);
     }
@@ -138,4 +138,71 @@ class ShopifyHelper
 
         return $this->shopify->GraphQL->post($createFulfillmentMutation, null, null, $variables);
     }
+
+    public function getAvailableQuantityByInventoryItemIds($inventoryItemIds)
+    {
+        $query = <<<GQL
+          query GetInventoryQuantities(\$inventoryItemIds: [ID!]!) {
+            nodes(ids: \$inventoryItemIds) {
+              id
+              ... on InventoryItem {
+                id
+                sku
+                inventoryLevels(first: 10) {
+                  nodes {
+                    location {
+                      id
+                      name
+                    }
+                    quantities(names: ["available"]) {
+                      name
+                      quantity
+                    }
+                  }
+                }
+              }
+            }
+          }
+        GQL;
+
+        $variables = [
+            "inventoryItemIds" => $inventoryItemIds,
+        ];
+        $result = $this->shopify->GraphQL->post($query, null, null, $variables);
+
+        return $result['data']['nodes'];
+    }
+
+    public function adjustInventoryQty($adjustmentChanges)
+    {
+        $inventoryAdjustmentQuantitiesInput = [
+          "input" => [
+            "reason" => "correction",
+            "name" => "available",
+            "changes" => $adjustmentChanges,
+          ],
+        ];
+        $query = <<<GQL
+          mutation inventoryAdjustQuantities(\$input: InventoryAdjustQuantitiesInput!) {
+              inventoryAdjustQuantities(input: \$input) {
+                  userErrors {
+                      field
+                      message
+                  }
+                  inventoryAdjustmentGroup {
+                      createdAt
+                      reason
+                      referenceDocumentUri
+                      changes {
+                        name
+                        delta
+                      }
+                  }
+              }
+          } 
+        GQL;
+        $response = $this->shopify->GraphQL->post($query, null, null, $inventoryAdjustmentQuantitiesInput);
+        return $response;
+    }
+
 }

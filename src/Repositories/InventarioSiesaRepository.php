@@ -2,8 +2,8 @@
 
 namespace App\Repositories;
 
-use App\Models\InventarioSiesa;
 use App\Config\Database;
+use App\Models\Inventario;
 use PDO;
 
 class InventarioSiesaRepository
@@ -17,103 +17,42 @@ class InventarioSiesaRepository
     }
 
     /**
-     * Obtiene todos los registros de la vista.
+     * Obtiene los datos combinados etre product e vw_Inventario_Siesa.
      */
-    public function findAll()
+    public function findInventoryBySkuListAndCia($skuList, $ciacod)
     {
-        $query = "SELECT * FROM vw_Inventario_Siesa";
+        $ciacod = $ciacod == '232P' ? '20' : $ciacod;
+
+        // Generar los placeholders (?,?,?)
+        $placeholders = implode(',', array_fill(0, count($skuList), '?'));
+        $query = "SELECT
+          TRIM(ctrlCreateProducts.sku) as sku, 
+          ctrlCreateProducts.locacion as location, 
+          ctrlCreateProducts.prod_id as product_id, 
+          ctrlCreateProducts.inve_id as inventory_id,
+          ctrlCreateProducts.vari_id as variant_id, 
+          vw_Inventario_Siesa.Cod_Compañia as company_code, 
+          vw_Inventario_Siesa.available as available_qty_siesa
+        FROM
+          dbo.ctrlCreateProducts
+        INNER JOIN
+          dbo.vw_Inventario_Siesa
+        ON
+          TRIM(ctrlCreateProducts.sku) = TRIM(vw_Inventario_Siesa.Sku) AND
+          ctrlCreateProducts.locacion = vw_Inventario_Siesa.location
+        WHERE
+          TRIM(vw_Inventario_Siesa.Sku) IN ($placeholders) 
+          AND vw_Inventario_Siesa.CODTIENDA = ?
+        ORDER BY sku DESC";
         $stmt = $this->db->prepare($query);
-        $stmt->execute();
+
+        $params = array_merge($skuList, [$ciacod]);
+        $stmt->execute($params);
 
         $inventarios = [];
+
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $inventario = new InventarioSiesa();
-            $inventario->Cod_Compania = $row['Cod_Compania'];
-            $inventario->Compania = $row['Compania'];
-            $inventario->available = $row['available'];
-            $inventario->Bodega = $row['Bodega'];
-            $inventario->Sku = $row['Sku'];
-            $inventario->location = $row['location'];
-            $inventario->CODTIENDA = $row['CODTIENDA'];
-            $inventarios[] = $inventario;
-        }
-
-        return $inventarios;
-    }
-
-    /**
-     * Obtiene registros filtrados por SKU.
-     */
-    public function findBySku($sku)
-    {
-        $query = "SELECT * FROM vw_Inventario_Siesa WHERE Sku = :sku";
-        $stmt = $this->db->prepare($query);
-        $stmt->bindParam(':sku', $sku);
-        $stmt->execute();
-
-        $inventarios = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $inventario = new InventarioSiesa();
-            $inventario->Cod_Compania = $row['Cod_Compania'];
-            $inventario->Compania = $row['Compania'];
-            $inventario->available = $row['available'];
-            $inventario->Bodega = $row['Bodega'];
-            $inventario->Sku = $row['Sku'];
-            $inventario->location = $row['location'];
-            $inventario->CODTIENDA = $row['CODTIENDA'];
-            $inventarios[] = $inventario;
-        }
-
-        return $inventarios;
-    }
-
-    /**
-     * Obtiene registros filtrados por Código de Compañía.
-     */
-    public function findByCodCompania($codCompania)
-    {
-        $query = "SELECT * FROM vw_Inventario_Siesa WHERE Cod_Compania = :codCompania";
-        $stmt = $this->db->prepare($query);
-        $stmt->bindParam(':codCompania', $codCompania);
-        $stmt->execute();
-
-        $inventarios = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $inventario = new InventarioSiesa();
-            $inventario->Cod_Compania = $row['Cod_Compania'];
-            $inventario->Compania = $row['Compania'];
-            $inventario->available = $row['available'];
-            $inventario->Bodega = $row['Bodega'];
-            $inventario->Sku = $row['Sku'];
-            $inventario->location = $row['location'];
-            $inventario->CODTIENDA = $row['CODTIENDA'];
-            $inventarios[] = $inventario;
-        }
-
-        return $inventarios;
-    }
-
-    /**
-     * Obtiene registros filtrados por Bodega.
-     */
-    public function findByBodega($bodega)
-    {
-        $query = "SELECT * FROM vw_Inventario_Siesa WHERE Bodega = :bodega";
-        $stmt = $this->db->prepare($query);
-        $stmt->bindParam(':bodega', $bodega);
-        $stmt->execute();
-
-        $inventarios = [];
-        while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
-            $inventario = new InventarioSiesa();
-            $inventario->Cod_Compania = $row['Cod_Compania'];
-            $inventario->Compania = $row['Compania'];
-            $inventario->available = $row['available'];
-            $inventario->Bodega = $row['Bodega'];
-            $inventario->Sku = $row['Sku'];
-            $inventario->location = $row['location'];
-            $inventario->CODTIENDA = $row['CODTIENDA'];
-            $inventarios[] = $inventario;
+            $inventarios[] = Inventario::fromArray($row);
         }
 
         return $inventarios;
