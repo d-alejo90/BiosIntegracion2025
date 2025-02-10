@@ -205,4 +205,31 @@ class ShopifyHelper
         return $response;
     }
 
+    public function updateVariantPrices($variantPricesVariable)
+    {
+
+        $query = <<<GQL
+        mutation productVariantsBulkUpdate(\$productId: ID!, \$variants: [ProductVariantsBulkInput!]!) {
+            productVariantsBulkUpdate(productId: \$productId, variants: \$variants) {
+                product {
+                    id
+                    title
+                }
+                productVariants {
+                    id
+                    title
+                    price
+                    compareAtPrice
+                }
+                userErrors {
+                    field
+                    message
+                }
+            }
+        }
+        GQL;
+
+        $response = $this->shopify->GraphQL->post($query, null, null, $variantPricesVariable);
+        return $response;
+    }
 }

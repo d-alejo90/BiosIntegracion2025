@@ -1,7 +1,5 @@
 <?php
 
-// src/CronJobs/ProcessFulfillments.php
-
 namespace App\CronJobs;
 
 use App\Repositories\InventarioSiesaRepository;
@@ -28,7 +26,7 @@ class UpdateInventory
         $this->storeName = $config['storeName'];
         $this->codigoCia = $config['codigoCia'];
         $this->shopifyHelper = new ShopifyHelper($config['shopifyConfig']);
-        $this->logFile = "cron_fulfillment_$this->storeName.txt";
+        $this->logFile = "cron_update_inventory_$this->storeName.txt";
     }
 
     public function run()
