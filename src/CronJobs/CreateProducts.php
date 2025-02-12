@@ -82,8 +82,9 @@ class CreateProducts
 
         foreach ($groupedItems as $items) {
             $variables = $this->buildShopifyProductVariables($items, $bodegasValues);
-            print_r($variables);
-            // $shopifyResponses[] = $this->shopifyHelper->createProducts($variables);
+            Logger::log($this->logFile, "Create Product: " . $variables["productSet"]["title"]);
+            Logger::log($this->logFile, "Variables: " . json_encode($variables));
+            $shopifyResponses[] = $this->shopifyHelper->createProducts($variables);
         }
 
         return $shopifyResponses;
@@ -157,9 +158,10 @@ class CreateProducts
             return $item->presentation;
         }, $items));
 
-        return array_map(function ($presentation) {
+        // Formatea como un arreglo de objetos con el campo "name" y asegura índices secuenciales
+        return array_values(array_map(function ($presentation) {
             return ["name" => $presentation];
-        }, $uniquePresentations);
+        }, $uniquePresentations));
     }
 
     private function buildVariantsForMizooco(array $items): array
@@ -222,8 +224,9 @@ class CreateProducts
             if (isset($response['data']['productSet']['product']['variants']['nodes'])) {
                 foreach ($response['data']['productSet']['product']['variants']['nodes'] as $node) {
                     $product = $this->createProductFromNode($node, $response);
-                    print_r($product);
-                    // $this->productRepository->create($product);
+                    Logger::log($this->logFile, "Creating product: " . $product->sku);
+                    Logger::log($this->logFile, "Product: " . json_encode($product));
+                    $this->productRepository->create($product);
                 }
             }
         }
