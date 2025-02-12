@@ -37,12 +37,12 @@ class CreateProducts
     public function run()
     {
         Logger::log($this->logFile, "Start Run " . date('Y-m-d H:i:s'));
-
+        echo 'Start Run CreateProducts' . date('Y-m-d H:i:s') . "\n";
         $products = $this->getSiesaProducts();
         $groupedItems = $this->groupProductsByTitle($products);
         $shopifyResponses = $this->createShopifyProducts($groupedItems);
         $this->saveProductsFromResponses($shopifyResponses);
-
+        echo 'End Run CreateProducts' . date('Y-m-d H:i:s');
         Logger::log($this->logFile, "End Run " . date('Y-m-d H:i:s') . "\n===========================\n");
     }
 
