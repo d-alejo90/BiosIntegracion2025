@@ -4,7 +4,6 @@ namespace App\Models;
 
 class Product
 {
-    public int $id;
     public ?string $sku;
     public ?string $locacion;
     public ?string $nota;
@@ -16,7 +15,6 @@ class Product
     public ?string $cia_cod;
 
     public function __construct(
-        int $id,
         ?string $sku = null,
         ?string $locacion = null,
         ?string $nota = null,
@@ -27,7 +25,6 @@ class Product
         ?string $vari_id = null,
         ?string $cia_cod = null
     ) {
-        $this->id = $id;
         $this->sku = $sku;
         $this->locacion = $locacion;
         $this->nota = $nota;
@@ -42,7 +39,6 @@ class Product
     public static function fromArray(array $data): self
     {
         return new self(
-            $data['id'],
             $data['sku'] ?? null,
             $data['locacion'] ?? null,
             $data['nota'] ?? null,

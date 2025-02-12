@@ -82,4 +82,9 @@ final class Constants
       "60916072494" => "Minorista",
       "61816995886" => "Eje-Cafetero-Pinares",
     ];
+
+    public const BODEGAS = [
+      "mizooco" => self::BODEGAS_MIZOOCO,
+      "campo_azul" => self::BODEGAS_CAMPO_AZUL
+    ];
 }

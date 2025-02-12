@@ -244,11 +244,11 @@ class ShopifyHelper
                 nodes {
                   id
                   title
-                  price
+                  sku
                   inventoryQuantity
                   inventoryItem {
                     id
-                    inventoryLevels(first: 5) {
+                    inventoryLevels(first: 1) {
                       nodes {
                         location {
                           id
