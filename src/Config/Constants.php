@@ -64,4 +64,22 @@ final class Constants
     ];
 
     public const FECHA_DE_NACIMIENTO = "1989-07-01 09:00:00";
+
+    public const BODEGAS_MIZOOCO = [
+      "89995608360" => "Barranquilla",
+      "89918046504" => "Bogotá",
+      "102061080872" => "Bucaramanga",
+      "91807318312" => "Cali",
+      "89917882664" => "Medellín",
+      "102061048104" => "Pereira",
+    ];
+
+    public const BODEGAS_CAMPO_AZUL = [
+      "64213581870" => "Barranquilla",
+      "60916105262" => "Suba-Bogota",
+      "61816963118" => "Bucaramanga-Concordia",
+      "60906635310" => "Rionegro",
+      "60916072494" => "Minorista",
+      "61816995886" => "Eje-Cafetero-Pinares",
+    ];
 }

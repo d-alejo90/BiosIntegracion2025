@@ -232,4 +232,42 @@ class ShopifyHelper
         $response = $this->shopify->GraphQL->post($query, null, null, $variantPricesVariable);
         return $response;
     }
+
+    public function createProducts($productsVariable)
+    {
+        $query = <<<GQL
+        mutation createProduct(\$productSet: ProductSetInput!, \$synchronous: Boolean!) {
+          productSet(synchronous: \$synchronous, input: \$productSet) {
+            product {
+              id
+              variants(first: 15) {
+                nodes {
+                  id
+                  title
+                  price
+                  inventoryQuantity
+                  inventoryItem {
+                    id
+                    inventoryLevels(first: 5) {
+                      nodes {
+                        location {
+                          id
+                          name
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            userErrors {
+              field
+              message
+            }
+          }
+        }
+        GQL;
+        $response = $this->shopify->GraphQL->post($query, null, null, $productsVariable);
+        return $response;
+    }
 }
