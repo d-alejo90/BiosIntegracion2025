@@ -28,4 +28,5 @@ class Customer
     public $billing_nombre;
     public $billing_apellido;
     public $CodigoCia;
+    public $audit_date;
 }

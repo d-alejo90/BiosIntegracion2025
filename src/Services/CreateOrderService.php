@@ -37,12 +37,18 @@ class CreateOrderService
         $config = $storeConfig->getConfig($storeUrl);
         $this->codigoCia = $config['codigoCia'];
         $this->storeName = $config['storeName'];
-        $this->zipCodes = Constants::ZIP_CODES[$this->storeName];
+        $this->zipCodes = $this->normalizeArray(Constants::ZIP_CODES[$this->storeName]);
         $this->shopifyHelper = new ShopifyHelper($config['shopifyConfig']);
     }
 
     public function processOrder($orderData)
     {
+        $orderData = $this->isValidJson($orderData) ? json_decode($orderData, true) : false;
+        if (!$orderData) {
+            $message = "Fallo en la obtención de datos de Shopify";
+            Logger::log("wh_run_$this->storeName.txt", $message);
+            throw new \Exception($message, 1);
+        }
         $orderId = $orderData['id'];
         $customerId = $orderData['customer']['id'] ?? 'NAN';
 
@@ -70,8 +76,8 @@ class CreateOrderService
             Logger::log("wh_run_$this->storeName.txt", $message);
             throw new \Exception($message, 1);
         }
-
-        if (empty($this->zipCodes[$orderData['shipping_address']['city']])) {
+        $normalizedCity = $this->normalizeString($orderData['shipping_address']['city']);
+        if (empty($this->zipCodes[$normalizedCity])) {
             $message = "Fallo en la obtención de zip code de Shopify con order ID: $orderId";
             Logger::log("wh_run_$this->storeName.txt", $message);
             throw new \Exception($message, 1);
@@ -86,6 +92,40 @@ class CreateOrderService
         $this->createOrderDetails($orderData, $customerId);
 
         Logger::log("wh_run_$this->storeName.txt", "Order processed: $orderId");
+    }
+
+    private function normalizeString($string)
+    {
+        // Convierte la cadena a minúsculas y normaliza los caracteres especiales
+        $string = mb_strtolower($string, 'UTF-8');
+        // Remplaza los caracteres especiales manualmente
+        $specialCharacters = [
+          'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+          'à' => 'a', 'è' => 'e', 'ì' => 'i', 'ò' => 'o', 'ù' => 'u',
+          'â' => 'a', 'ê' => 'e', 'î' => 'i', 'ô' => 'o', 'û' => 'u',
+          'ä' => 'a', 'ë' => 'e', 'ï' => 'i', 'ö' => 'o', 'ü' => 'u',
+          'ã' => 'a', 'ñ' => 'n', 'ç' => 'c', 'í' => 'i',
+        ];
+        $string = strtr($string, $specialCharacters);
+        return $string;
+    }
+
+    private function normalizeArray(array $array)
+    {
+        $normalizedArray = [];
+        foreach ($array as $key => $value) {
+            $normalizedArray[$this->normalizeString($key)] = $value;
+        }
+        return $normalizedArray;
+    }
+
+    private function isValidJson($data)
+    {
+        // Intenta decodificar el JSON
+        json_decode($data);
+
+        // Verifica si hubo errores
+        return (json_last_error() === JSON_ERROR_NONE);
     }
 
     private function getShopifyCustomer($customerId)
@@ -135,17 +175,19 @@ class CreateOrderService
         $customer->cc_registro = $cedula;
         $customer->nombre_registro = $shopifyCustomer['firstName'];
         $customer->apellido_registro = $shopifyCustomer['lastName'];
-        $customer->fecha_nacimiento = FECHA_DE_NACIMIENTO;
+        $customer->fecha_nacimiento = Constants::FECHA_DE_NACIMIENTO;
         $customer->billing_nombre = $orderData['billing_address']['first_name'];
         $customer->billing_apellido = $orderData['billing_address']['last_name'];
         $customer->CodigoCia = $this->codigoCia;
+        $customer->audit_date = $orderData['created_at'];
 
         return $customer;
     }
 
     private function getZipCode($city)
     {
-        $zipCode = ZIP_CODES[$city] ?? null;
+        $city = $this->normalizeString($city);
+        $zipCode = $this->zipCodes[$city] ?? null;
         if (!$zipCode) {
             Logger::log("wh_run_$this->storeName.txt", "Failed to retrieve zip code for city: $city");
         }
@@ -157,6 +199,7 @@ class CreateOrderService
         $orderHead = new OrderHead();
         $orderHead->order_id = $orderData['id'];
         $orderHead->order_name = $orderData['name'];
+        $orderHead->audit_date = $orderData['created_at'];
         $orderHead->status = 1;
         $orderHead->CodigoCia = $this->codigoCia;
 
@@ -180,6 +223,7 @@ class CreateOrderService
             $orderDetail->order_id = $orderData['id'];
             $orderDetail->customer_id = $customerId;
             $orderDetail->created_at = $orderData['created_at'];
+            $orderDetail->audit_date = $orderData['created_at'];
             $orderDetail->currency = $orderData['currency'];
             $orderDetail->notes = $orderData['note'] ?? '';
             $orderDetail->sku = $lineItem['sku'];
