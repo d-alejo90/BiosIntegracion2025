@@ -270,4 +270,112 @@ class ShopifyHelper
         $response = $this->shopify->GraphQL->post($query, null, null, $productsVariable);
         return $response;
     }
+
+    public function getProductById(string $productId)
+    {
+        $productId = "gid://shopify/Product/{$productId}";
+        $query = <<<GQL
+          query getProductById(\$productId: ID!) {
+            product(id: \$productId) {
+              id
+              title
+              options {
+                id
+                name
+                values
+                optionValues {
+                  id
+                  name
+                }
+              }
+            }
+          }
+        GQL;
+        return $this->shopify->GraphQL->post($query, null, null, ['productId' => $productId]);
+    }
+
+    public function createOptionValues($optionId, $options, $productId)
+    {
+        $option = [
+            "id" => $optionId,
+        ];
+        $variables = [
+          "productId" => $productId,
+          "option" => $option,
+          "optionValuesToAdd" => $options,
+        ];
+        print_r($variables);
+        $query = <<<GQL
+          mutation updateOption(\$productId: ID!, \$option: OptionUpdateInput!, \$optionValuesToAdd: [OptionValueCreateInput!], \$optionValuesToUpdate: [OptionValueUpdateInput!], \$optionValuesToDelete: [ID!], \$variantStrategy: ProductOptionUpdateVariantStrategy) {
+            productOptionUpdate(productId: \$productId, option: \$option, optionValuesToAdd: \$optionValuesToAdd, optionValuesToUpdate: \$optionValuesToUpdate, optionValuesToDelete: \$optionValuesToDelete, variantStrategy: \$variantStrategy) {
+              userErrors {
+                field
+                message
+                code
+              }
+              product {
+                id
+                options {
+                  id
+                  name
+                  values
+                  position
+                  optionValues {
+                    id
+                    name
+                    hasVariants
+                  }
+                }
+              }
+            }
+          }
+        GQL;
+        return $this->shopify->GraphQL->post($query, null, null, $variables);
+    }
+
+    public function productVariantsBulkCreate(array $variantes)
+    {
+
+        $query = <<<GQL
+          mutation productVariantsBulkCreate(\$productId: ID!, \$variants: [ProductVariantsBulkInput!]!) {
+            productVariantsBulkCreate(productId: \$productId, variants: \$variants) {
+              userErrors {
+                code
+                field
+                message
+              }
+              product {
+                id
+                options {
+                  id
+                  name
+                  values
+                  position
+                  optionValues {
+                    id
+                    name
+                    hasVariants
+                  }
+                }
+              }
+              productVariants {
+                id
+                title
+                selectedOptions {
+                  name
+                  value
+                }
+              }
+            }
+          }
+        GQL;
+        try {
+            $response = $this->shopify->GraphQL->post($query, null, null, $variantes);
+        } catch (\Exception $e) {
+            echo '<pre>';
+            print_r($e);
+        }
+        return $response;
+
+    }
 }

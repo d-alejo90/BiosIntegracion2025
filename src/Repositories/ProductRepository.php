@@ -72,6 +72,26 @@ class ProductRepository
     }
 
     /**
+     * Obtiene un producto por su ID.
+     */
+    public function findByGroupId($group_id)
+    {
+        echo "Group ID: " . $group_id . "\n";
+        $query = "SELECT prod_id as shopify_product_id FROM ctrlCreateProducts WHERE agrupador = :group_id GROUP BY prod_id";
+        $stmt = $this->db->prepare($query);
+        $stmt->bindParam(':group_id', $group_id, PDO::PARAM_STR);
+        $stmt->execute();
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            return $row['shopify_product_id'];
+        }
+
+        return null;
+    }
+
+    /**
      * Crea un nuevo producto.
      */
     public function create(Product $product)
