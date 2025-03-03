@@ -78,7 +78,7 @@ class UpdateInventory
             $response = $this->shopifyHelper->adjustInventoryQty($adjustmentChanges);
             Logger::log($this->logFile, "Response: " . json_encode($response));
         } catch (\Exception $e) {
-            Logger::log($this->logFile, "Error: " . $e->getMessage());
+            Logger::log($this->logFile, "Error Ajuste de inventario: " . $e->getMessage());
         }
         Logger::log($this->logFile, "End Run " . date('Y-m-d H:i:s') . "\n===========================\n");
     }
