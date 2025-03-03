@@ -39,15 +39,7 @@ class UpdatePrices
 
         // Obtener precios de Siesa
         $preciosSiesa = $this->precioItemSiesaRepository->findPricesBySkuListAndCia($skuList, $this->codigoCia);
-        echo '<pre>';
         $this->mapProductsToPrices($products, $preciosSiesa);
-        // try {
-        //     Logger::log($this->logFile, "Ajuste de inventario: " . json_encode($adjustmentChanges));
-        //     $response = $this->shopifyHelper->adjustInventoryQty($adjustmentChanges);
-        //     Logger::log($this->logFile, "Response: " . json_encode($response));
-        // } catch (\Exception $e) {
-        //     Logger::log($this->logFile, "Error: " . $e->getMessage());
-        // }
         Logger::log($this->logFile, "End Run " . date('Y-m-d H:i:s') . "\n===========================\n");
     }
 
@@ -95,10 +87,13 @@ class UpdatePrices
         try {
             // Enviamos precios a Shopify
             foreach ($priceVariables as $priceVariable) {
+                Logger::log($this->logFile, "Updating prices for product: " . $priceVariable['productId']);
+                Logger::log($this->logFile, "Variants: " . json_encode($priceVariable));
                 $this->shopifyHelper->updateVariantPrices($priceVariable);
+                Logger::log($this->logFile, "Prices updated for product: " . $priceVariable['productId']);
             }
         } catch (\Exception $e) {
-            Logger::log($this->logFile, "Error: " . $e->getMessage());
+            Logger::log($this->logFile, "Error Updating Prices: " . $e->getMessage());
         }
     }
 }
