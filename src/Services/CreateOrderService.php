@@ -58,12 +58,10 @@ class CreateOrderService
             throw new \Exception($message, 1);
         }
 
-        $shopifyCustomer = $this->getShopifyCustomer($customerId);
+        $shopifyOrderData = $this->getShopifyOrderData($orderId);
+        $shopifyCustomer = $this->getShopifyCustomer($shopifyOrderData);
 
-        $cedulas = $this->getCedulas($orderId);
-
-        $cedula = $cedulas['data']['order']['cedula']['value'];
-        $cedulaBilling = $cedulas['data']['order']['cedulaFacturacion']['value'] ?? $cedula;
+        [$cedula, $cedulaBilling] = $this->getCedulas($shopifyOrderData);
 
         if (empty($cedula)) {
             $message = "Fallo en la obtención de cedula de Shopify con order ID: $orderId";
@@ -76,6 +74,7 @@ class CreateOrderService
             Logger::log("wh_run_$this->storeName.txt", $message);
             throw new \Exception($message, 1);
         }
+
         $normalizedCity = $this->normalizeString($orderData['shipping_address']['city']);
         if (empty($this->zipCodes[$normalizedCity])) {
             $message = "Fallo en la obtención de zip code de Shopify con order ID: $orderId";
@@ -128,28 +127,35 @@ class CreateOrderService
         return (json_last_error() === JSON_ERROR_NONE);
     }
 
-    private function getShopifyCustomer($customerId)
+    private function getShopifyOrderData($orderId)
     {
-        $shopifyCustomer = $this->shopifyHelper->getCustomerById($customerId);
-        if (!$shopifyCustomer || !isset($shopifyCustomer['data']) || empty($shopifyCustomer['data']['customer'])) {
-            $message = "Fallo en la obtención del cliente de Shopify con ID: $customerId";
+        $orderData = $this->shopifyHelper->getShopifyOrderDataByOrderId($orderId);
+        if (!$orderData || !isset($orderData['data']) || empty($orderData['data']['order'])) {
+            $message = "Fallo en la obtención de order de Shopify con ID: $orderId";
+            Logger::log("wh_run_$this->storeName.txt", $message);
+            throw new \Exception($message, 1);
+        }
+        Logger::log("wh_run_$this->storeName.txt", "Order de Shopify obtenido con éxito: \n " . json_encode($orderData));
+        return $orderData['data']['order'];
+    }
+
+    private function getShopifyCustomer($orderData)
+    {
+        $shopifyCustomer = $orderData['customer'];
+        if (!isset($shopifyCustomer)) {
+            $message = "Fallo en la obtención del cliente de la orden";
             Logger::log("wh_run_$this->storeName.txt", $message);
             throw new \Exception($message, 1);
         }
         Logger::log("wh_run_$this->storeName.txt", "Cliente de Shopify obtenido con éxito: \n " . json_encode($shopifyCustomer));
-        return $shopifyCustomer['data']['customer'];
+        return $shopifyCustomer;
     }
 
-    private function getCedulas($orderId)
+    private function getCedulas($orderData)
     {
-        $cedulas = $this->shopifyHelper->getCedulasByOrderId($orderId);
-        if (!$cedulas) {
-            $message = "Fallo en la obtención de cedulas de Shopify con order ID: $orderId";
-            Logger::log("wh_run_$this->storeName.txt", $message);
-            throw new \Exception($message, 1);
-        }
-        Logger::log("wh_run_$this->storeName.txt", "Cedulas de Shopify obtenidas con éxito: \n " . json_encode($cedulas));
-        return $cedulas;
+        $cedula = $orderData['cedula'];
+        $cedulaBilling = $orderData['cedulaFacturacion'] ?? $cedula;
+        return [$cedula, $cedulaBilling];
     }
 
     private function createCustomer($orderData, $shopifyCustomer, $cedulaBilling, $cedula)

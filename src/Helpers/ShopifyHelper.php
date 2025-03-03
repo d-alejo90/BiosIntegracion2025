@@ -14,7 +14,7 @@ class ShopifyHelper
     }
 
 
-    public function getCedulasByOrderId($orderId)
+    public function getShopifyOrderDataByOrderId($orderId)
     {
         $orderId = "gid://shopify/Order/{$orderId}";
         $query = <<<GQL
@@ -23,7 +23,10 @@ class ShopifyHelper
                 id
                 name
                 customer {
-                    id
+                  id
+                  email
+                  firstName
+                  lastName
                 }
                 cedula: metafield(namespace: "checkoutblocks", key: "cedula") {
                     value
