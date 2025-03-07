@@ -14,7 +14,7 @@ class CreateManualOrderWebhook extends BaseManualWebhook
             if (!$this->verifyWebhook()) {
                 throw new \Exception("No se pudo verificar el webhook.", 1);
             }
-            Logger::log($this->logFile, "Data JSON: " . json_encode($this->data));
+            Logger::log($this->logFile, "Data JSON: " . print_r($this->data, true));
             // Obtener la URL de la tienda desde el payload de Shopify
             Logger::log($this->logFile, "Tienda: $this->storeUrl");
             // Crear el OrderService con la configuración de la tienda

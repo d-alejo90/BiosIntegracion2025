@@ -49,13 +49,14 @@ class OrderHeadRepository
     public function getPendingFulfillments($CodigoCia)
     {
         $sql = "SELECT
-        Order_head.*
+        TOP(50)
+        Order_head.order_id
         FROM
         Order_head
-        WHERE Order_head.audit_date >= DATEADD(DAY, -30, CAST(GETDATE() AS DATE))
+        WHERE Order_head.audit_date >= DATEADD(DAY, -7, CAST(GETDATE() AS DATE))
         AND Order_head.FacturaSiesa = '1'
         AND Order_head.Despacho = '0' 
-        AND Order_head.CodigoCia = :CodigoCia";
+        AND Order_head.CodigoCia = :CodigoCia;";
         $statement = $this->db->prepare($sql);
         $statement->execute(['CodigoCia' => $CodigoCia]);
         return $statement->fetchAll(\PDO::FETCH_ASSOC);
@@ -63,11 +64,12 @@ class OrderHeadRepository
 
     public function updateOrderFulfillmentStatus($orderId, $CodigoCia)
     {
-        $sql = "UPDATE Order_head SET Despacho = '2', Time_despacho = GETDATE() WHERE order_id = :order_id AND CodigoCia = :CodigoCia";
+        $orderId = end(explode("/", $orderId));
+        $sql = "UPDATE Order_head SET Despacho = '2', audit_date = GETDATE() WHERE order_id = :order_id AND CodigoCia = :CodigoCia";
         $statement = $this->db->prepare($sql);
         $statement->execute([
-          ':order_id' => $orderId,
-          ':CodigoCia' => $CodigoCia
+            ':order_id' => $orderId,
+            ':CodigoCia' => $CodigoCia
         ]);
         return $statement->rowCount();
     }

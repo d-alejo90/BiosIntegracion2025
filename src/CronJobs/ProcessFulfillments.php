@@ -45,14 +45,21 @@ class ProcessFulfillments
             $orderIdsQuery = $orderIdsQuery . $orderId . " OR id:";
             $first++;
         }
-        $orderIdsQuery = substr($orderIdsQuery, 0, -12);
+        $orderIdsQuery = substr($orderIdsQuery, 0, -7);
 
         try {
             $fulfillmentOrders = $this->shopifyHelper->getFulfillmentDataByOrderIds($orderIdsQuery, $first);
+            sleep(1); // Esperamos 1 segundo para evitar problemas de rate limit
             if ($fulfillmentOrders) {
                 foreach ($fulfillmentOrders as $fulfillmentOrder) {
                     $orderId = $fulfillmentOrder['id'];
                     $fulfillmentData = $fulfillmentOrder['fulfillmentOrders']['nodes'][0];
+
+                    if (isset($fulfillmentData['status']) && $fulfillmentData['status'] == 'CLOSED') {
+                        $this->orderHeadRepository->updateOrderFulfillmentStatus($orderId, $this->codigoCia);
+                        continue;
+                    }
+
                     if (isset($fulfillmentData['status']) && $fulfillmentData['status'] == 'OPEN') {
 
                         $response = $this->shopifyHelper->createFulfillment($fulfillmentData['id']);
@@ -68,7 +75,6 @@ class ProcessFulfillments
             }
         } catch (\Exception $e) {
             Logger::log($this->logFile, "Error procesando el fulfillment para la orden $orderId: " . $e->getMessage());
-
         }
 
 

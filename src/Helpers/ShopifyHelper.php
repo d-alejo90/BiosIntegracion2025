@@ -6,27 +6,30 @@ use PHPShopify\ShopifySDK;
 
 class ShopifyHelper
 {
-    private $shopify;
+  private $shopify;
 
-    public function __construct($config)
-    {
-        $this->shopify = new ShopifySDK($config);
-    }
+  public function __construct($config)
+  {
+    $this->shopify = new ShopifySDK($config);
+  }
 
 
-    public function getShopifyOrderDataByOrderId($orderId)
-    {
-        $orderId = "gid://shopify/Order/{$orderId}";
-        $query = <<<GQL
-        query {
-            order(id: "{$orderId}") {
+  public function getShopifyOrderDataByOrderId($orderId)
+  {
+    $orderId = "gid://shopify/Order/$orderId";
+    $response = $this->shopify->GraphQL->post(<<<GQL
+        query getShopifyOrderDataByOrderId (\$orderId: ID!) {
+            order(id: \$orderId) {
                 id
                 name
                 customer {
-                  id
-                  email
-                  firstName
-                  lastName
+                    id
+                    firstName
+                    lastName
+                    defaultAddress {
+                      address1
+                      address2
+                    }
                 }
                 cedula: metafield(namespace: "checkoutblocks", key: "cedula") {
                     value
@@ -36,17 +39,17 @@ class ShopifyHelper
                 }
             }
         }
-        GQL;
+        GQL, null, null, ['orderId' => $orderId]);
 
-        return $this->shopify->GraphQL->post($query);
-    }
+    return $response;
+  }
 
-    public function getCustomerById($customerId)
-    {
-        $customerId = "gid://shopify/Customer/{$customerId}";
-        $query = <<<GQL
-        query {
-            customer(id: "{$customerId}") {
+  public function getCustomerById($customerId)
+  {
+    $customerId = "gid://shopify/Customer/$customerId";
+    $query = <<<GQL
+        query getCustomerById (\$customerId: ID!){
+            customer(id: \$customerId) {
                 id
                 firstName
                 lastName
@@ -70,12 +73,12 @@ class ShopifyHelper
         }
         GQL;
 
-        return $this->shopify->GraphQL->post($query);
-    }
+    return $this->shopify->GraphQL->post($query, null, null, ['customerId' => $customerId]);
+  }
 
-    public function getFulfillmentId($orderId)
-    {
-        $response = $this->shopify->GraphQL->post(<<<GQL
+  public function getFulfillmentId($orderId)
+  {
+    $response = $this->shopify->GraphQL->post(<<<GQL
         query getFulfillmentOrderByOrderId(\$id: ID!) {
             order(id: \$id) {
                 id
@@ -89,12 +92,12 @@ class ShopifyHelper
         }
         GQL, null, null, ['id' => "gid://shopify/Order/$orderId"]);
 
-        return $response["data"]["order"]["fulfillmentOrders"]["nodes"][0]['id'] ?? null;
-    }
+    return $response["data"]["order"]["fulfillmentOrders"]["nodes"][0]['id'] ?? null;
+  }
 
-    public function getFulfillmentDataByOrderIds($orderIdsQuery, $first)
-    {
-        $response = $this->shopify->GraphQL->post(<<<GQL
+  public function getFulfillmentDataByOrderIds($orderIdsQuery, $first)
+  {
+    $response = $this->shopify->GraphQL->post(<<<GQL
         query getFulfillmentDataByOrderIds(\$orderIdsQuery: String, \$first: Int) {
           orders(first: \$first, query: \$orderIdsQuery) {
             nodes {
@@ -109,12 +112,12 @@ class ShopifyHelper
           }
         }
         GQL, null, null, ['orderIdsQuery' => $orderIdsQuery, 'first' => $first]);
-        return $response["data"]["orders"]["nodes"] ?? null;
-    }
+    return $response["data"]["orders"]["nodes"] ?? null;
+  }
 
-    public function createFulfillment($fulfillmentId)
-    {
-        $createFulfillmentMutation = <<<GQL
+  public function createFulfillment($fulfillmentId)
+  {
+    $createFulfillmentMutation = <<<GQL
         mutation fulfillmentCreate(\$fulfillment: FulfillmentInput!) {
             fulfillmentCreate(fulfillment: \$fulfillment) {
                 fulfillment {
@@ -128,23 +131,23 @@ class ShopifyHelper
         }
         GQL;
 
-        $variables = [
-            'fulfillment' => [
-                'lineItemsByFulfillmentOrder' => [
-                    [
-                        'fulfillmentOrderId' => $fulfillmentId
-                    ]
-                ],
-                'notifyCustomer' => true
-            ]
-        ];
+    $variables = [
+      'fulfillment' => [
+        'lineItemsByFulfillmentOrder' => [
+          [
+            'fulfillmentOrderId' => $fulfillmentId
+          ]
+        ],
+        'notifyCustomer' => true
+      ]
+    ];
 
-        return $this->shopify->GraphQL->post($createFulfillmentMutation, null, null, $variables);
-    }
+    return $this->shopify->GraphQL->post($createFulfillmentMutation, null, null, $variables);
+  }
 
-    public function getAvailableQuantityByInventoryItemIds($inventoryItemIds)
-    {
-        $query = <<<GQL
+  public function getAvailableQuantityByInventoryItemIds($inventoryItemIds)
+  {
+    $query = <<<GQL
           query GetInventoryQuantities(\$inventoryItemIds: [ID!]!) {
             nodes(ids: \$inventoryItemIds) {
               id
@@ -168,24 +171,24 @@ class ShopifyHelper
           }
         GQL;
 
-        $variables = [
-            "inventoryItemIds" => $inventoryItemIds,
-        ];
-        $result = $this->shopify->GraphQL->post($query, null, null, $variables);
+    $variables = [
+      "inventoryItemIds" => $inventoryItemIds,
+    ];
+    $result = $this->shopify->GraphQL->post($query, null, null, $variables);
 
-        return $result['data']['nodes'];
-    }
+    return $result['data']['nodes'];
+  }
 
-    public function adjustInventoryQty($adjustmentChanges)
-    {
-        $inventoryAdjustmentQuantitiesInput = [
-          "input" => [
-            "reason" => "correction",
-            "name" => "available",
-            "changes" => $adjustmentChanges,
-          ],
-        ];
-        $query = <<<GQL
+  public function adjustInventoryQty($adjustmentChanges)
+  {
+    $inventoryAdjustmentQuantitiesInput = [
+      "input" => [
+        "reason" => "correction",
+        "name" => "available",
+        "changes" => $adjustmentChanges,
+      ],
+    ];
+    $query = <<<GQL
           mutation inventoryAdjustQuantities(\$input: InventoryAdjustQuantitiesInput!) {
               inventoryAdjustQuantities(input: \$input) {
                   userErrors {
@@ -204,14 +207,14 @@ class ShopifyHelper
               }
           } 
         GQL;
-        $response = $this->shopify->GraphQL->post($query, null, null, $inventoryAdjustmentQuantitiesInput);
-        return $response;
-    }
+    $response = $this->shopify->GraphQL->post($query, null, null, $inventoryAdjustmentQuantitiesInput);
+    return $response;
+  }
 
-    public function updateVariantPrices($variantPricesVariable)
-    {
+  public function updateVariantPrices($variantPricesVariable)
+  {
 
-        $query = <<<GQL
+    $query = <<<GQL
         mutation productVariantsBulkUpdate(\$productId: ID!, \$variants: [ProductVariantsBulkInput!]!) {
             productVariantsBulkUpdate(productId: \$productId, variants: \$variants) {
                 product {
@@ -232,13 +235,13 @@ class ShopifyHelper
         }
         GQL;
 
-        $response = $this->shopify->GraphQL->post($query, null, null, $variantPricesVariable);
-        return $response;
-    }
+    $response = $this->shopify->GraphQL->post($query, null, null, $variantPricesVariable);
+    return $response;
+  }
 
-    public function createProducts($productsVariable)
-    {
-        $query = <<<GQL
+  public function createProducts($productsVariable)
+  {
+    $query = <<<GQL
         mutation createProduct(\$productSet: ProductSetInput!, \$synchronous: Boolean!) {
           productSet(synchronous: \$synchronous, input: \$productSet) {
             product {
@@ -270,14 +273,14 @@ class ShopifyHelper
           }
         }
         GQL;
-        $response = $this->shopify->GraphQL->post($query, null, null, $productsVariable);
-        return $response;
-    }
+    $response = $this->shopify->GraphQL->post($query, null, null, $productsVariable);
+    return $response;
+  }
 
-    public function getProductById(string $productId)
-    {
-        $productId = "gid://shopify/Product/{$productId}";
-        $query = <<<GQL
+  public function getProductById(string $productId)
+  {
+    $productId = "gid://shopify/Product/{$productId}";
+    $query = <<<GQL
           query getProductById(\$productId: ID!) {
             product(id: \$productId) {
               id
@@ -294,21 +297,21 @@ class ShopifyHelper
             }
           }
         GQL;
-        return $this->shopify->GraphQL->post($query, null, null, ['productId' => $productId]);
-    }
+    return $this->shopify->GraphQL->post($query, null, null, ['productId' => $productId]);
+  }
 
-    public function createOptionValues($optionId, $options, $productId)
-    {
-        $option = [
-            "id" => $optionId,
-        ];
-        $variables = [
-          "productId" => $productId,
-          "option" => $option,
-          "optionValuesToAdd" => $options,
-        ];
-        print_r($variables);
-        $query = <<<GQL
+  public function createOptionValues($optionId, $options, $productId)
+  {
+    $option = [
+      "id" => $optionId,
+    ];
+    $variables = [
+      "productId" => $productId,
+      "option" => $option,
+      "optionValuesToAdd" => $options,
+    ];
+    print_r($variables);
+    $query = <<<GQL
           mutation updateOption(\$productId: ID!, \$option: OptionUpdateInput!, \$optionValuesToAdd: [OptionValueCreateInput!], \$optionValuesToUpdate: [OptionValueUpdateInput!], \$optionValuesToDelete: [ID!], \$variantStrategy: ProductOptionUpdateVariantStrategy) {
             productOptionUpdate(productId: \$productId, option: \$option, optionValuesToAdd: \$optionValuesToAdd, optionValuesToUpdate: \$optionValuesToUpdate, optionValuesToDelete: \$optionValuesToDelete, variantStrategy: \$variantStrategy) {
               userErrors {
@@ -333,13 +336,13 @@ class ShopifyHelper
             }
           }
         GQL;
-        return $this->shopify->GraphQL->post($query, null, null, $variables);
-    }
+    return $this->shopify->GraphQL->post($query, null, null, $variables);
+  }
 
-    public function productVariantsBulkCreate(array $variantes)
-    {
+  public function productVariantsBulkCreate(array $variantes)
+  {
 
-        $query = <<<GQL
+    $query = <<<GQL
           mutation productVariantsBulkCreate(\$productId: ID!, \$variants: [ProductVariantsBulkInput!]!) {
             productVariantsBulkCreate(productId: \$productId, variants: \$variants) {
               userErrors {
@@ -372,13 +375,12 @@ class ShopifyHelper
             }
           }
         GQL;
-        try {
-            $response = $this->shopify->GraphQL->post($query, null, null, $variantes);
-        } catch (\Exception $e) {
-            echo '<pre>';
-            print_r($e);
-        }
-        return $response;
-
+    try {
+      $response = $this->shopify->GraphQL->post($query, null, null, $variantes);
+    } catch (\Exception $e) {
+      echo '<pre>';
+      print_r($e);
     }
+    return $response;
+  }
 }

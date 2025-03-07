@@ -88,7 +88,8 @@ class CreateOrderService
         $orderHead = $this->createOrderHead($orderData);
         $this->orderHeadRepository->create($orderHead);
 
-        $this->createOrderDetails($orderData, $customerId);
+        $orderDetail = $this->createOrderDetails($orderData, $customerId);
+        $this->orderDetailRepository->create($orderDetail);
 
         Logger::log("wh_run_$this->storeName.txt", "Order processed: $orderId");
     }
@@ -99,11 +100,30 @@ class CreateOrderService
         $string = mb_strtolower($string, 'UTF-8');
         // Remplaza los caracteres especiales manualmente
         $specialCharacters = [
-          'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
-          'à' => 'a', 'è' => 'e', 'ì' => 'i', 'ò' => 'o', 'ù' => 'u',
-          'â' => 'a', 'ê' => 'e', 'î' => 'i', 'ô' => 'o', 'û' => 'u',
-          'ä' => 'a', 'ë' => 'e', 'ï' => 'i', 'ö' => 'o', 'ü' => 'u',
-          'ã' => 'a', 'ñ' => 'n', 'ç' => 'c', 'í' => 'i',
+            'á' => 'a',
+            'é' => 'e',
+            'í' => 'i',
+            'ó' => 'o',
+            'ú' => 'u',
+            'à' => 'a',
+            'è' => 'e',
+            'ì' => 'i',
+            'ò' => 'o',
+            'ù' => 'u',
+            'â' => 'a',
+            'ê' => 'e',
+            'î' => 'i',
+            'ô' => 'o',
+            'û' => 'u',
+            'ä' => 'a',
+            'ë' => 'e',
+            'ï' => 'i',
+            'ö' => 'o',
+            'ü' => 'u',
+            'ã' => 'a',
+            'ñ' => 'n',
+            'ç' => 'c',
+            'í' => 'i',
         ];
         $string = strtr($string, $specialCharacters);
         return $string;
@@ -153,8 +173,8 @@ class CreateOrderService
 
     private function getCedulas($orderData)
     {
-        $cedula = $orderData['cedula'];
-        $cedulaBilling = $orderData['cedulaFacturacion'] ?? $cedula;
+        $cedula = $orderData['cedula']['value'] ?? null;
+        $cedulaBilling = $orderData['cedulaFacturacion']['value'] ?? $cedula;
         return [$cedula, $cedulaBilling];
     }
 
@@ -186,7 +206,7 @@ class CreateOrderService
         $customer->billing_apellido = $orderData['billing_address']['last_name'];
         $customer->CodigoCia = $this->codigoCia;
         $customer->audit_date = $orderData['created_at'];
-
+        Logger::log("wh_run_$this->storeName.txt", "Cliente Para Guardarse: \n " . json_encode($customer));
         return $customer;
     }
 
@@ -208,7 +228,7 @@ class CreateOrderService
         $orderHead->audit_date = $orderData['created_at'];
         $orderHead->status = 1;
         $orderHead->CodigoCia = $this->codigoCia;
-
+        Logger::log("wh_run_$this->storeName.txt", "Order Head para guardar: \n " . json_encode($orderHead));
         return $orderHead;
     }
 
@@ -218,12 +238,12 @@ class CreateOrderService
             $orderData['shipping_address']['city'],
             $orderData['shipping_address']['province']
         );
-
+        Logger::log("wh_run_$this->storeName.txt", "shippingData: \n " . json_encode($shippingData));
         $billingData = $this->ciudadRepository->findByCityNameAndDepartmentName(
             $orderData['billing_address']['city'],
             $orderData['billing_address']['province']
         );
-
+        Logger::log("wh_run_$this->storeName.txt", "billingData: \n " . json_encode($billingData));
         foreach ($orderData['line_items'] as $lineItem) {
             $orderDetail = new OrderDetail();
             $orderDetail->order_id = $orderData['id'];
@@ -242,15 +262,15 @@ class CreateOrderService
             $orderDetail->shipping_amount = $orderData['total_shipping_price_set']['shop_money']['amount'] ?? 0;
             $orderDetail->country_code_shipping = $shippingData->f013_id_pais ?? '000';
             $orderDetail->province_code_shipping = $shippingData->f013_id_depto ?? '00';
-            $orderDetail->city_code_shipping = $shippingData->f_013_id ?? '000';
+            $orderDetail->city_code_shipping = $shippingData->f013_id ?? '000';
             $orderDetail->country_code_billing = $billingData->f013_id_pais ?? '000';
             $orderDetail->province_code_billing = $billingData->f013_id_depto ?? '00';
-            $orderDetail->city_code_billing = $billingData->f_013_id ?? '000';
+            $orderDetail->city_code_billing = $billingData->f013_id ?? '000';
             $orderDetail->tags = $orderData['customer']['tags'] ?? 'NaN';
             $orderDetail->CodigoCia = $this->codigoCia;
             $orderDetail->flete = $orderDetail->shipping_amount;
-
-            $this->orderDetailRepository->create($orderDetail);
+            Logger::log("wh_run_$this->storeName.txt", "OrderDetail Para Guardar: \n " . json_encode($orderDetail));
+            return $orderDetail;
         }
     }
 }

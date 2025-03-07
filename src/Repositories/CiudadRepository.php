@@ -75,9 +75,9 @@ class CiudadRepository
      *
      * @return Ciudad|null La ciudad encontrada o null si no existe.
      */
-    public function findByCityNameAndDepartmentName(string $cityName, string $departmentName): ?Ciudad
+    public function findByCityNameAndDepartmentName(string $cityName, string $departmentName): Ciudad | null
     {
-        $query = 'SELECT TOP(1) c.* FROM vw_Ciudades_Siesa AS c JOIN vw_Departamentos_Siesa AS d ON c.f013_id_depto = d.f012_id AND c.f013_id_pais = d.f012_id_pais WHERE d.f012_descripcion LIKE :departmentName AND c.f013_descripcion LIKE :cityName AND c.f013_id_Compañía = 20';
+        $query = 'SELECT TOP(1) c.* FROM vw_Ciudades_Siesa AS c JOIN vw_Departamentos_Siesa AS d ON c.f013_id_depto = d.f012_id AND c.f013_id_pais = d.f012_id_pais WHERE d.f012_descripcion LIKE :departmentName AND c.f013_descripcion LIKE :cityName AND c.f013_id_Compañia = 20';
         $stmt = $this->db->prepare($query);
         $stmt->execute(['departmentName' => "%$departmentName%", 'cityName' => "%$cityName%"]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -97,8 +97,8 @@ class CiudadRepository
     private function mapCiudad($row): Ciudad | null
     {
         $ciudad = new Ciudad();
-        $ciudad->f013_id_Compania = $row['f013_id_Compañía'];
-        $ciudad->f013_Desc_Compania = $row['f013_Desc_Compañía'];
+        $ciudad->f013_id_Compania = $row['f013_id_Compañia'];
+        $ciudad->f013_Desc_Compania = $row['f013_Desc_Compañia'];
         $ciudad->f013_id_pais = $row['f013_id_pais'];
         $ciudad->f013_id_depto = $row['f013_id_depto'];
         $ciudad->f013_id = $row['f013_id'];
