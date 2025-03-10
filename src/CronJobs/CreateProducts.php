@@ -33,7 +33,7 @@ class CreateProducts
         $this->codigoCia = $config['codigoCia'];
         $this->bodegas = Constants::BODEGAS[$this->storeName];
         $this->logFile = "cron_create_products_{$this->storeName}.txt";
-        $this->skuList = $skuList ?? "770366,770365,570373,570374";
+        $this->skuList = $skuList ?? "";
     }
 
     public function run()
@@ -52,7 +52,6 @@ class CreateProducts
             Logger::log($this->logFile, "Error: " . $err->getMessage());
         }
         Logger::log($this->logFile, "End Run " . date('Y-m-d H:i:s') . "\n===========================\n");
-
     }
 
     private function getSiesaProducts(): array
@@ -116,8 +115,8 @@ class CreateProducts
                     }
 
                     $existingOptionValues[$option["name"]] = [
-                      "optionId" => $option["id"],
-                      "optionValues" => $option["optionValues"],
+                        "optionId" => $option["id"],
+                        "optionValues" => $option["optionValues"],
                     ];
                 }
                 echo '<pre>';
@@ -125,7 +124,7 @@ class CreateProducts
                 $variables = $this->buildShopifyVariantVariables($items, $shopifyProduct["id"], $presentationsValues, $existingOptionValues);
                 Logger::log($this->logFile, "Update Product: " . $shopifyProduct["id"]);
                 Logger::log($this->logFile, "Variables: " . json_encode($variables));
-                // $shopifyResponses[] = $this->shopifyHelper->productVariantsBulkCreate($variables);
+                $shopifyResponses[] = $this->shopifyHelper->productVariantsBulkCreate($variables);
             }
         }
         echo '<pre>';
@@ -158,8 +157,8 @@ class CreateProducts
     {
         $variants = $this->buildVariantsForCampoAzul($items, $existingOptionValues);
         $result = [
-          "productId" => $shopifyProductId,
-          "variants" => $variants,
+            "productId" => $shopifyProductId,
+            "variants" => $variants,
         ];
         return $result;
     }
@@ -168,8 +167,8 @@ class CreateProducts
     {
         $variants = $this->buildVariantsForMizooco($items, $existingOptionValues);
         $result = [
-          "productId" => $shopifyProductId,
-          "variants" => $variants,
+            "productId" => $shopifyProductId,
+            "variants" => $variants,
         ];
         return $result;
     }
@@ -320,10 +319,10 @@ class CreateProducts
                 $optionValueIdPeso = $this->getIdByName($existingOptionValues['Peso'], $item->presentation);
                 $optionValueIdBodega = $this->getIdByName($existingOptionValues['Bodegas'], $this->bodegas[$item->location]);
                 $optionValuePesoToAdd = [
-                  "optionId" => $existingOptionValues['Peso']['optionId'],
+                    "optionId" => $existingOptionValues['Peso']['optionId'],
                 ];
                 $optionValueBodegaToAdd = [
-                  "optionId" => $existingOptionValues['Bodegas']['optionId'],
+                    "optionId" => $existingOptionValues['Bodegas']['optionId'],
                 ];
                 if (empty($optionValueIdPeso)) {
                     $optionValuePesoToAdd['name'] = $item->presentation;
@@ -338,10 +337,10 @@ class CreateProducts
                 $optionValues[] = $optionValuePesoToAdd;
                 $optionValues[] = $optionValueBodegaToAdd;
                 $inventoryQuantities = [
-                  [
-                    "availableQuantity" => 0,
-                    "locationId" =>  "gid://shopify/Location/$item->location",
-                  ],
+                    [
+                        "availableQuantity" => 0,
+                        "locationId" =>  "gid://shopify/Location/$item->location",
+                    ],
                 ];
             }
             return [

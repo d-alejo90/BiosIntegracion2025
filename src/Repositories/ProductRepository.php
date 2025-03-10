@@ -34,8 +34,8 @@ class ProductRepository
     }
 
     /**
-    * Obtiene productos por su cia_cod
-    */
+     * Obtiene productos por su cia_cod
+     */
     public function findByCia($cia_cod)
     {
         $cia_cod = $cia_cod == '232P' ? '20' : $cia_cod; // Para esta tabla el cia_cod 232P se cambia por 20
@@ -72,7 +72,7 @@ class ProductRepository
     }
 
     /**
-     * Obtiene un producto por su ID.
+     * Obtiene un producto por su ID de agrupador.
      */
     public function findByGroupId($group_id)
     {
@@ -96,8 +96,8 @@ class ProductRepository
      */
     public function create(Product $product)
     {
-        $query = "INSERT INTO ctrlCreateProducts (sku, locacion, nota, audit_date, estado, prod_id, inve_id, vari_id, cia_cod) 
-                  VALUES (:sku, :locacion, :nota, :audit_date, :estado, :prod_id, :inve_id, :vari_id, :cia_cod)";
+        $query = "INSERT INTO ctrlCreateProducts (sku, locacion, nota, audit_date, estado, prod_id, inve_id, vari_id, cia_cod, agrupador) 
+                  VALUES (:sku, :locacion, :nota, :audit_date, :estado, :prod_id, :inve_id, :vari_id, :cia_cod, :agrupador)";
         $stmt = $this->db->prepare($query);
 
         $stmt->bindParam(':sku', $product->sku);
@@ -109,6 +109,7 @@ class ProductRepository
         $stmt->bindParam(':inve_id', $product->inve_id);
         $stmt->bindParam(':vari_id', $product->vari_id);
         $stmt->bindParam(':cia_cod', $product->cia_cod);
+        $stmt->bindParam(':agrupador', $product->agrupador);
 
         return $stmt->execute();
     }
@@ -120,7 +121,7 @@ class ProductRepository
     {
         $query = "UPDATE ctrlCreateProducts 
                   SET sku = :sku, locacion = :locacion, nota = :nota, audit_date = :audit_date, estado = :estado, 
-                      prod_id = :prod_id, inve_id = :inve_id, vari_id = :vari_id, cia_cod = :cia_cod 
+                      prod_id = :prod_id, inve_id = :inve_id, vari_id = :vari_id, cia_cod = :cia_cod, agrupador = :agrupador
                   WHERE id = :id";
         $stmt = $this->db->prepare($query);
 
@@ -134,7 +135,7 @@ class ProductRepository
         $stmt->bindParam(':inve_id', $product->inve_id);
         $stmt->bindParam(':vari_id', $product->vari_id);
         $stmt->bindParam(':cia_cod', $product->cia_cod);
-
+        $stmt->bindParam(':agrupador', $product->agrupador);
         return $stmt->execute();
     }
 
@@ -148,5 +149,4 @@ class ProductRepository
         $stmt->bindParam(':id', $id);
         return $stmt->execute();
     }
-
 }
