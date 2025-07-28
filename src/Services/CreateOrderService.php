@@ -24,8 +24,10 @@ class CreateOrderService
     private $codigoCia;
     private $storeName;
     private $zipCodes;
+    private $saveMode;
+    private $logFile;
 
-    public function __construct($storeUrl)
+    public function __construct($storeUrl, $saveMode = false)
     {
         $this->orderHeadRepository = new OrderHeadRepository();
         $this->orderDetailRepository = new OrderDetailRepository();
@@ -39,6 +41,8 @@ class CreateOrderService
         $this->storeName = $config['storeName'];
         $this->zipCodes = $this->normalizeArray(Constants::ZIP_CODES[$this->storeName]);
         $this->shopifyHelper = new ShopifyHelper($config['shopifyConfig']);
+        $this->saveMode = $saveMode;
+        $this->logFile = "wh_run_$this->storeName.txt";
     }
 
     public function processOrder($orderData)
@@ -46,15 +50,16 @@ class CreateOrderService
         $orderData = $this->isValidJson($orderData) ? json_decode($orderData, true) : false;
         if (!$orderData) {
             $message = "Fallo en la obtención de datos de Shopify";
-            Logger::log("wh_run_$this->storeName.txt", $message);
+            Logger::log($this->logFile, $message);
             throw new \Exception($message, 1);
         }
+
         $orderId = $orderData['id'];
         $customerId = $orderData['customer']['id'] ?? 'NAN';
 
         if ($this->orderHeadRepository->exists($orderId)) {
             $message = "Orden con ID: $orderId ya existe en la base de datos";
-            Logger::log("wh_run_$this->storeName.txt", $message);
+            Logger::log($this->logFile, $message);
             throw new \Exception($message, 1);
         }
 
@@ -65,33 +70,45 @@ class CreateOrderService
 
         if (empty($cedula)) {
             $message = "Fallo en la obtención de cedula de Shopify con order ID: $orderId";
-            Logger::log("wh_run_$this->storeName.txt", $message);
+            Logger::log($this->logFile, $message);
             throw new \Exception($message, 1);
         }
 
         if (empty($cedulaBilling)) {
             $message = "Fallo en la obtención de cedula de facturacion de Shopify con order ID: $orderId";
-            Logger::log("wh_run_$this->storeName.txt", $message);
+            Logger::log($this->logFile, $message);
             throw new \Exception($message, 1);
         }
 
         $normalizedCity = $this->normalizeString($orderData['shipping_address']['city']);
         if (empty($this->zipCodes[$normalizedCity])) {
             $message = "Fallo en la obtención de zip code de Shopify con order ID: $orderId";
-            Logger::log("wh_run_$this->storeName.txt", $message);
+            Logger::log($this->logFile, $message);
             throw new \Exception($message, 1);
         }
 
-        $customer = $this->createCustomer($orderData, $shopifyCustomer, $cedulaBilling, $cedula);
-        $this->customerRepository->create($customer);
+        $customer = $this->mapCustomer($orderData, $shopifyCustomer, $cedulaBilling, $cedula);
+        $orderHead = $this->mapOrderHead($orderData);
+        $orderDetailItems = $this->mapOrderDetailItems($orderData, $customerId);
 
-        $orderHead = $this->createOrderHead($orderData);
-        $this->orderHeadRepository->create($orderHead);
+        if ($this->saveMode) {
+            $this->customerRepository->create($customer);
+            $this->orderHeadRepository->create($orderHead);
+        } else {
+            Logger::log($this->logFile, "Customer para guardar: \n " . json_encode($customer, JSON_PRETTY_PRINT));
+            Logger::log($this->logFile, "Order Head para guardar: \n " . json_encode($orderHead, JSON_PRETTY_PRINT));
+        }
 
-        $orderDetail = $this->createOrderDetails($orderData, $customerId);
-        $this->orderDetailRepository->create($orderDetail);
 
-        Logger::log("wh_run_$this->storeName.txt", "Order processed: $orderId");
+        foreach ($orderDetailItems as $orderDetail) {
+            if ($this->saveMode) {
+                $this->orderDetailRepository->create($orderDetail);
+            } else {
+                Logger::log($this->logFile, "OrderDetail para guardar: \n " . json_encode($orderDetail, JSON_PRETTY_PRINT));
+            }
+        }
+
+        Logger::log($this->logFile, "Order processed: $orderId");
     }
 
     private function normalizeString($string)
@@ -152,10 +169,10 @@ class CreateOrderService
         $orderData = $this->shopifyHelper->getShopifyOrderDataByOrderId($orderId);
         if (!$orderData || !isset($orderData['data']) || empty($orderData['data']['order'])) {
             $message = "Fallo en la obtención de order de Shopify con ID: $orderId";
-            Logger::log("wh_run_$this->storeName.txt", $message);
+            Logger::log($this->logFile, $message);
             throw new \Exception($message, 1);
         }
-        Logger::log("wh_run_$this->storeName.txt", "Order de Shopify obtenido con éxito: \n " . json_encode($orderData));
+        Logger::log($this->logFile, "Order de Shopify obtenido con éxito: \n " . json_encode($orderData));
         return $orderData['data']['order'];
     }
 
@@ -164,10 +181,10 @@ class CreateOrderService
         $shopifyCustomer = $orderData['customer'];
         if (!isset($shopifyCustomer)) {
             $message = "Fallo en la obtención del cliente de la orden";
-            Logger::log("wh_run_$this->storeName.txt", $message);
+            Logger::log($this->logFile, $message);
             throw new \Exception($message, 1);
         }
-        Logger::log("wh_run_$this->storeName.txt", "Cliente de Shopify obtenido con éxito: \n " . json_encode($shopifyCustomer));
+        Logger::log($this->logFile, "Cliente de Shopify obtenido con éxito: \n " . json_encode($shopifyCustomer));
         return $shopifyCustomer;
     }
 
@@ -178,7 +195,7 @@ class CreateOrderService
         return [$cedula, $cedulaBilling];
     }
 
-    private function createCustomer($orderData, $shopifyCustomer, $cedulaBilling, $cedula)
+    private function mapCustomer($orderData, $shopifyCustomer, $cedulaBilling, $cedula)
     {
         $customer = new Customer();
         $customer->order_id = $orderData['id'];
@@ -205,8 +222,8 @@ class CreateOrderService
         $customer->billing_nombre = $orderData['billing_address']['first_name'];
         $customer->billing_apellido = $orderData['billing_address']['last_name'];
         $customer->CodigoCia = $this->codigoCia;
-        $customer->audit_date = $orderData['created_at'];
-        Logger::log("wh_run_$this->storeName.txt", "Cliente Para Guardarse: \n " . json_encode($customer));
+        $customer->audit_date = $this->formatDatetimeForSQLServer($orderData['created_at']);
+        Logger::log($this->logFile, "Cliente Para Guardarse: \n " . json_encode($customer));
         return $customer;
     }
 
@@ -215,41 +232,50 @@ class CreateOrderService
         $city = $this->normalizeString($city);
         $zipCode = $this->zipCodes[$city] ?? null;
         if (!$zipCode) {
-            Logger::log("wh_run_$this->storeName.txt", "Failed to retrieve zip code for city: $city");
+            Logger::log($this->logFile, "Failed to retrieve zip code for city: $city");
         }
         return $zipCode;
     }
 
-    private function createOrderHead($orderData)
+    private function mapOrderHead($orderData)
     {
         $orderHead = new OrderHead();
         $orderHead->order_id = $orderData['id'];
         $orderHead->order_name = $orderData['name'];
-        $orderHead->audit_date = $orderData['created_at'];
+        $orderHead->audit_date = $this->formatDatetimeForSQLServer($orderData['created_at']);
         $orderHead->status = 1;
         $orderHead->CodigoCia = $this->codigoCia;
-        Logger::log("wh_run_$this->storeName.txt", "Order Head para guardar: \n " . json_encode($orderHead));
+        Logger::log($this->logFile, "Order Head para guardar: \n " . json_encode($orderHead));
         return $orderHead;
     }
 
-    private function createOrderDetails($orderData, $customerId)
+    private function mapOrderDetailItems($orderData, $customerId)
     {
+        $shippingAddress = $orderData['shipping_address'];
+        $billingAddress = $orderData['billing_address'];
+        $shippingCity = $shippingAddress['city'];
+        $billingCity = $billingAddress['city'];
+        $shippingProvince = $shippingCity == "Bogotá" ? "Bogotá, D.C" : $shippingAddress['province'];
+        $billingProvince = $billingCity == "Bogotá" ? "Bogotá, D.C" : $billingAddress['province'];
+
+
         $shippingData = $this->ciudadRepository->findByCityNameAndDepartmentName(
-            $orderData['shipping_address']['city'],
-            $orderData['shipping_address']['province']
+            $shippingCity,
+            $shippingProvince
         );
-        Logger::log("wh_run_$this->storeName.txt", "shippingData: \n " . json_encode($shippingData));
+        Logger::log($this->logFile, "shippingData: \n " . json_encode($shippingData));
         $billingData = $this->ciudadRepository->findByCityNameAndDepartmentName(
-            $orderData['billing_address']['city'],
-            $orderData['billing_address']['province']
+            $billingCity,
+            $billingProvince
         );
-        Logger::log("wh_run_$this->storeName.txt", "billingData: \n " . json_encode($billingData));
+        Logger::log($this->logFile, "billingData: \n " . json_encode($billingData));
+        $orderDetailItems = [];
         foreach ($orderData['line_items'] as $lineItem) {
             $orderDetail = new OrderDetail();
             $orderDetail->order_id = $orderData['id'];
             $orderDetail->customer_id = $customerId;
-            $orderDetail->created_at = $orderData['created_at'];
-            $orderDetail->audit_date = $orderData['created_at'];
+            $orderDetail->created_at = $this->formatDatetimeForSQLServer($orderData['created_at']);
+            $orderDetail->audit_date = $this->formatDatetimeForSQLServer($orderData['created_at']);
             $orderDetail->currency = $orderData['currency'];
             $orderDetail->notes = $orderData['note'] ?? '';
             $orderDetail->sku = $lineItem['sku'];
@@ -269,8 +295,30 @@ class CreateOrderService
             $orderDetail->tags = $orderData['customer']['tags'] ?? 'NaN';
             $orderDetail->CodigoCia = $this->codigoCia;
             $orderDetail->flete = $orderDetail->shipping_amount;
-            Logger::log("wh_run_$this->storeName.txt", "OrderDetail Para Guardar: \n " . json_encode($orderDetail));
-            return $orderDetail;
+            Logger::log($this->logFile, "OrderDetail Para Guardar: \n " . json_encode($orderDetail));
+            $orderDetailItems[] = $orderDetail;
+        }
+        return $orderDetailItems;
+    }
+
+    /**
+     * Convierte una fecha en formato ISO 8601 (con o sin zona horaria)
+     * al formato 'Y-m-d H:i:s' compatible con SQL Server.
+     *
+     * @param string|null $datetimeStr Fecha en formato ISO (ej. '2025-07-08T18:30:16-05:00')
+     * @return string|null Fecha en formato SQL Server o null si falla/contenido vacío
+     */
+    function formatDatetimeForSQLServer(?string $datetimeStr): ?string
+    {
+        if (empty($datetimeStr)) {
+            return null;
+        }
+
+        try {
+            $dt = new \DateTime($datetimeStr);
+            return $dt->format('Y-m-d H:i:s');
+        } catch (\Exception $e) {
+            return null;
         }
     }
 }

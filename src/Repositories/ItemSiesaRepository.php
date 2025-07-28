@@ -27,7 +27,7 @@ class ItemSiesaRepository
             vw.location,
             vw.body_html as title,
             vw.CODTIENDA as cia_cod,
-            vw.presentacion as presentation
+            vw.presentacion as presentation,
             vw.agrupador as group_id
             FROM 
                 vw_Items_Siesa vw

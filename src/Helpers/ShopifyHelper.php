@@ -16,6 +16,7 @@ class ShopifyHelper
 
   public function getShopifyOrderDataByOrderId($orderId)
   {
+    $orderId = trim($orderId);
     $orderId = "gid://shopify/Order/$orderId";
     $response = $this->shopify->GraphQL->post(<<<GQL
         query getShopifyOrderDataByOrderId (\$orderId: ID!) {
@@ -40,7 +41,6 @@ class ShopifyHelper
             }
         }
         GQL, null, null, ['orderId' => $orderId]);
-
     return $response;
   }
 
@@ -115,7 +115,7 @@ class ShopifyHelper
     return $response["data"]["orders"]["nodes"] ?? null;
   }
 
-  public function createFulfillment($fulfillmentId)
+  public function createFulfillment($fulfillmentId, $saveMode = false)
   {
     $createFulfillmentMutation = <<<GQL
         mutation fulfillmentCreate(\$fulfillment: FulfillmentInput!) {
@@ -142,7 +142,18 @@ class ShopifyHelper
       ]
     ];
 
-    return $this->shopify->GraphQL->post($createFulfillmentMutation, null, null, $variables);
+    try {
+      echo '<pre>';
+      print_r($variables);
+      if ($saveMode) {
+        $response = $this->shopify->GraphQL->post($createFulfillmentMutation, null, null, $variables);
+      } else {
+        $response = "Save Mode: Off";
+      }
+      return $response;
+    } catch (\Throwable $th) {
+      //throw $th;
+    }
   }
 
   public function getAvailableQuantityByInventoryItemIds($inventoryItemIds)
@@ -179,7 +190,7 @@ class ShopifyHelper
     return $result['data']['nodes'];
   }
 
-  public function adjustInventoryQty($adjustmentChanges)
+  public function adjustInventoryQty($adjustmentChanges, $saveMode = false)
   {
     $inventoryAdjustmentQuantitiesInput = [
       "input" => [
@@ -207,13 +218,22 @@ class ShopifyHelper
               }
           } 
         GQL;
-    $response = $this->shopify->GraphQL->post($query, null, null, $inventoryAdjustmentQuantitiesInput);
-    return $response;
+    try {
+      echo '<pre>';
+      print_r(json_encode($inventoryAdjustmentQuantitiesInput, JSON_PRETTY_PRINT));
+      $response = "Save Mode: Off";
+      if ($saveMode) {
+        $response = $this->shopify->GraphQL->post($query, null, null, $inventoryAdjustmentQuantitiesInput);
+      }
+      return $response;
+    } catch (\Exception $e) {
+      echo '<pre>';
+      print_r($e);
+    }
   }
 
-  public function updateVariantPrices($variantPricesVariable)
+  public function updateVariantPrices($variantPricesVariable, $saveMode = false)
   {
-
     $query = <<<GQL
         mutation productVariantsBulkUpdate(\$productId: ID!, \$variants: [ProductVariantsBulkInput!]!) {
             productVariantsBulkUpdate(productId: \$productId, variants: \$variants) {
@@ -224,6 +244,7 @@ class ShopifyHelper
                 productVariants {
                     id
                     title
+                    sku
                     price
                     compareAtPrice
                 }
@@ -234,12 +255,21 @@ class ShopifyHelper
             }
         }
         GQL;
-
-    $response = $this->shopify->GraphQL->post($query, null, null, $variantPricesVariable);
-    return $response;
+    try {
+      echo '<pre>';
+      print_r(json_encode($variantPricesVariable, JSON_PRETTY_PRINT));
+      $response = "Save Mode: Off";
+      if ($saveMode) {
+        $response = $this->shopify->GraphQL->post($query, null, null, $variantPricesVariable);
+      }
+      return $response;
+    } catch (\Exception $e) {
+      echo '<pre>';
+      print_r($e);
+    }
   }
 
-  public function createProducts($productsVariable)
+  public function createProducts($productsVariable, $saveMode = false)
   {
     $query = <<<GQL
         mutation createProduct(\$productSet: ProductSetInput!, \$synchronous: Boolean!) {
@@ -273,8 +303,18 @@ class ShopifyHelper
           }
         }
         GQL;
-    $response = $this->shopify->GraphQL->post($query, null, null, $productsVariable);
-    return $response;
+    try {
+      echo '<pre>';
+      print_r($productsVariable);
+      $response = "Save Mode: Off";
+      if ($saveMode) {
+        $response = $this->shopify->GraphQL->post($query, null, null, $productsVariable);
+      }
+      return $response;
+    } catch (\Exception $e) {
+      echo '<pre>';
+      print_r($e);
+    }
   }
 
   public function getProductById(string $productId)
@@ -339,7 +379,7 @@ class ShopifyHelper
     return $this->shopify->GraphQL->post($query, null, null, $variables);
   }
 
-  public function productVariantsBulkCreate(array $variantes)
+  public function productVariantsBulkCreate(array $variantes, $saveMode = false)
   {
 
     $query = <<<GQL
@@ -376,11 +416,16 @@ class ShopifyHelper
           }
         GQL;
     try {
-      $response = $this->shopify->GraphQL->post($query, null, null, $variantes);
+      echo '<pre>';
+      print_r($variantes);
+      $response = "Save Mode: Off";
+      if ($saveMode) {
+        $response = $this->shopify->GraphQL->post($query, null, null, $variantes);
+      }
+      return $response;
     } catch (\Exception $e) {
       echo '<pre>';
       print_r($e);
     }
-    return $response;
   }
 }

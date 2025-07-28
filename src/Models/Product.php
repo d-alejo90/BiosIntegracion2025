@@ -4,7 +4,6 @@ namespace App\Models;
 
 class Product
 {
-    public ?string $id;
     public ?string $sku;
     public ?string $locacion;
     public ?string $nota;
@@ -14,10 +13,8 @@ class Product
     public ?string $inve_id;
     public ?string $vari_id;
     public ?string $cia_cod;
-    public ?string $agrupador;
 
     public function __construct(
-        ?string $id = null,
         ?string $sku = null,
         ?string $locacion = null,
         ?string $nota = null,
@@ -26,10 +23,8 @@ class Product
         ?string $prod_id = null,
         ?string $inve_id = null,
         ?string $vari_id = null,
-        ?string $cia_cod = null,
-        ?string $agrupador = null
+        ?string $cia_cod = null
     ) {
-        $this->id = $id;
         $this->sku = $sku;
         $this->locacion = $locacion;
         $this->nota = $nota;
@@ -39,13 +34,11 @@ class Product
         $this->inve_id = $inve_id;
         $this->vari_id = $vari_id;
         $this->cia_cod = $cia_cod;
-        $this->agrupador = $agrupador;
     }
 
     public static function fromArray(array $data): self
     {
         return new self(
-            $data['id'] ?? null,
             $data['sku'] ?? null,
             $data['locacion'] ?? null,
             $data['nota'] ?? null,
@@ -54,8 +47,7 @@ class Product
             $data['prod_id'] ?? null,
             $data['inve_id'] ?? null,
             $data['vari_id'] ?? null,
-            $data['cia_cod'] ?? null,
-            $data['agrupador'] ?? null
+            $data['cia_cod'] ?? null
         );
     }
 }

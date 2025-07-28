@@ -12,6 +12,7 @@ class CreateOrderWebhook extends BaseWebhook
         try {
             Logger::log($this->logFile, "Start Run " . date('Y-m-d H:i:s'));
             if (!$this->verifyWebhook()) {
+                Logger::log($this->logFile, "No se pudo verificar el webhook.");
                 throw new \Exception("No se pudo verificar el webhook.", 1);
             }
             Logger::log($this->logFile, "Data JSON: " . json_encode($this->data));

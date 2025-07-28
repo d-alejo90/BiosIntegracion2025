@@ -4,6 +4,7 @@ namespace App\CronJobs;
 
 use App\Repositories\ItemSiesaRepository;
 use App\Repositories\ProductRepository;
+use App\Repositories\CronJobControlRepository;
 use App\Models\Product;
 use App\Helpers\StoreConfigFactory;
 use App\Helpers\ShopifyHelper;
@@ -14,18 +15,20 @@ class CreateProducts
 {
     private $itemSiesaRepository;
     private $productRepository;
+    private $cronJobControlRepository;
     private $bodegas;
     private $shopifyHelper;
     private $codigoCia;
     private $logFile;
     private $storeName;
     private $skuList;
+    private $saveMode;
 
-    public function __construct($storeUrl, $skuList = null)
+    public function __construct($storeUrl, $skuList = null, $saveMode = true)
     {
         $this->itemSiesaRepository = new ItemSiesaRepository();
         $this->productRepository = new ProductRepository();
-
+        $this->cronJobControlRepository = new CronJobControlRepository();
         $storeConfig = new StoreConfigFactory();
         $config = $storeConfig->getConfig($storeUrl);
         $this->shopifyHelper = new ShopifyHelper($config['shopifyConfig']);
@@ -33,18 +36,28 @@ class CreateProducts
         $this->codigoCia = $config['codigoCia'];
         $this->bodegas = Constants::BODEGAS[$this->storeName];
         $this->logFile = "cron_create_products_{$this->storeName}.txt";
-        $this->skuList = $skuList ?? "";
+        $this->skuList = $skuList;
+        $this->saveMode = $saveMode;
     }
 
     public function run()
     {
         Logger::log($this->logFile, "Start Run " . date('Y-m-d H:i:s'));
         try {
-            echo 'Start Run CreateProducts' . date('Y-m-d H:i:s') . "\n";
+            echo 'Start Run CreateProducts for ' . $this->storeName . ' ' . date('Y-m-d H:i:s') . "\n";
+            $cronName = 'crear_productos_' . $this->storeName;
+            $cronIsOn = $this->cronJobControlRepository->getStatusByCronName($cronName);
+            if (!$cronIsOn) {
+                echo "<p>El cron $cronName no esta activo </p>";
+                echo 'End Run CreateProducts' . date('Y-m-d H:i:s');
+                return;
+            }
             $products = $this->getSiesaProducts();
             $groupedItems = $this->groupProducts($products);
             $shopifyResponses = $this->createShopifyProducts($groupedItems);
-            $this->saveProductsFromResponses($shopifyResponses);
+            if ($this->saveMode) {
+                $this->saveProductsFromResponses($shopifyResponses);
+            }
             echo 'End Run CreateProducts' . date('Y-m-d H:i:s');
         } catch (\Exception $e) {
             Logger::log($this->logFile, "Exception: " . $e->getMessage());
@@ -67,7 +80,11 @@ class CreateProducts
         $groupedItems = [];
         foreach ($products as $product) {
             $product->location_name = $this->bodegas[$product->location];
-            $group_id = $product->group_id;
+            if (str_contains($this->storeName, "campo")) {
+                $group_id = $product->sku;
+            } else {
+                $group_id = $product->group_id;
+            }
 
             if (!isset($groupedItems[$group_id])) {
                 $groupedItems[$group_id] = [];
@@ -83,7 +100,8 @@ class CreateProducts
     {
         $shopifyResponses = [];
         $bodegasValues = $this->formatValues($this->bodegas);
-
+        echo '<pre>';
+        print_r($groupedItems);
         foreach ($groupedItems as $groupId => $items) {
             $existingProduct = $this->productRepository->findByGroupId($groupId);
             $variables = [];
@@ -92,7 +110,7 @@ class CreateProducts
                 Logger::log($this->logFile, "Create Product: " . $variables["productSet"]["title"]);
                 Logger::log($this->logFile, "Variables: " . json_encode($variables));
                 echo "===============CREATE======================";
-                $shopifyResponses[] = $this->shopifyHelper->createProducts($variables);
+                $shopifyResponses[] = $this->shopifyHelper->createProducts($variables, $this->saveMode);
             } else {
                 // Accedemos a shopify para obtener la data del producto
                 $shopifyProduct = $this->shopifyHelper->getProductById($existingProduct);
@@ -119,15 +137,14 @@ class CreateProducts
                         "optionValues" => $option["optionValues"],
                     ];
                 }
-                echo '<pre>';
+
                 echo "====================UPDATE ====================";
                 $variables = $this->buildShopifyVariantVariables($items, $shopifyProduct["id"], $presentationsValues, $existingOptionValues);
                 Logger::log($this->logFile, "Update Product: " . $shopifyProduct["id"]);
                 Logger::log($this->logFile, "Variables: " . json_encode($variables));
-                $shopifyResponses[] = $this->shopifyHelper->productVariantsBulkCreate($variables);
+                $shopifyResponses[] = $this->shopifyHelper->productVariantsBulkCreate($variables, $this->saveMode);
             }
         }
-        echo '<pre>';
         print_r($shopifyResponses);
         return $shopifyResponses;
     }
@@ -146,14 +163,14 @@ class CreateProducts
             : $this->buildShopifyProductVariablesForCampoAzul($items);
     }
 
-    private function buildShopifyVariantVariables(array $items, string $shopifyProductId = null, array $presentationsValues = [], array $existingOptionValues = []): array
+    private function buildShopifyVariantVariables(array $items, string | null $shopifyProductId = null, array $presentationsValues = [], array $existingOptionValues = []): array
     {
         return $this->storeName === "mizooco"
             ? $this->buildShopifyVariantVariablesForMizooco($items, $shopifyProductId, $presentationsValues, $existingOptionValues)
             : $this->buildShopifyVariantVariablesForCampoAzul($items, $shopifyProductId, $existingOptionValues);
     }
 
-    private function buildShopifyVariantVariablesForCampoAzul(array $items, string $shopifyProductId = null, array $existingOptionValues = []): array
+    private function buildShopifyVariantVariablesForCampoAzul(array $items, string | null $shopifyProductId = null, array $existingOptionValues = []): array
     {
         $variants = $this->buildVariantsForCampoAzul($items, $existingOptionValues);
         $result = [
@@ -163,7 +180,7 @@ class CreateProducts
         return $result;
     }
 
-    private function buildShopifyVariantVariablesForMizooco(array $items, string $shopifyProductId = null, $presentationsValues = [], $existingOptionValues = []): array
+    private function buildShopifyVariantVariablesForMizooco(array $items, string | null $shopifyProductId = null, $presentationsValues = [], $existingOptionValues = []): array
     {
         $variants = $this->buildVariantsForMizooco($items, $existingOptionValues);
         $result = [
@@ -397,7 +414,7 @@ class CreateProducts
         foreach ($shopifyResponses as $response) {
             if (isset($response['data']['productSet']['product']['variants']['nodes'])) {
                 foreach ($response['data']['productSet']['product']['variants']['nodes'] as $node) {
-                    $product = $this->createProductFromNode($node, $response);
+                    $product = $this->mapProductFromNode($node, $response);
                     Logger::log($this->logFile, "Creating product: " . $product->sku);
                     Logger::log($this->logFile, "Product: " . json_encode($product));
                     $this->productRepository->create($product);
@@ -406,18 +423,18 @@ class CreateProducts
         }
     }
 
-    private function createProductFromNode(array $node, array $response): Product
+    private function mapProductFromNode(array $node, array $response): Product
     {
         $product = new Product();
         $product->sku = $node['sku'];
         $product->locacion = $this->extractId($node['inventoryItem']['inventoryLevels']['nodes'][0]['location']['id']);
-        $product->nota = null;
+        $product->nota = 'Creado desde Integracion';
         $product->audit_date = date('Y-m-d H:i:s');
-        $product->estado = null;
+        $product->estado = '1';
         $product->prod_id = $this->extractId($response['data']['productSet']['product']['id']);
         $product->inve_id = $this->extractId($node['inventoryItem']['id']);
         $product->vari_id = $this->extractId($node['id']);
-        $product->cia_cod = $this->codigoCia;
+        $product->cia_cod = $this->codigoCia == '232P' ? '20' : $this->codigoCia;
 
         return $product;
     }
