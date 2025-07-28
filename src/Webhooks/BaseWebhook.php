@@ -44,7 +44,6 @@ abstract class BaseWebhook
 
     Logger::log($this->logFile, "Verificando firma HMAC...");
     Logger::log($this->logFile, "Firma HMAC: " . $this->shopifyHmac);
-    Logger::log($this->logFile, "Llave secreta: " . $this->appSecretKey);
 
     $calculatedHmac = base64_encode(hash_hmac('sha256', $this->data, $this->appSecretKey, true));
     Logger::log($this->logFile, "Firma HMAC calculada: " . $calculatedHmac);

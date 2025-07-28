@@ -15,7 +15,6 @@ class CreateOrderWebhook extends BaseWebhook
                 Logger::log($this->logFile, "No se pudo verificar el webhook.");
                 throw new \Exception("No se pudo verificar el webhook.", 1);
             }
-            Logger::log($this->logFile, "Data JSON: " . json_encode($this->data));
             // Obtener la URL de la tienda desde el payload de Shopify
             Logger::log($this->logFile, "Tienda: $this->storeUrl");
             // Crear el OrderService con la configuración de la tienda

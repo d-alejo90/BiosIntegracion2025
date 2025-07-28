@@ -27,7 +27,7 @@ class CreateOrderService
     private $saveMode;
     private $logFile;
 
-    public function __construct($storeUrl, $saveMode = false)
+    public function __construct($storeUrl, $saveMode = true)
     {
         $this->orderHeadRepository = new OrderHeadRepository();
         $this->orderDetailRepository = new OrderDetailRepository();
@@ -204,7 +204,7 @@ class CreateOrderService
         $customer->first_name = $shopifyCustomer['firstName'];
         $customer->last_name = $shopifyCustomer['lastName'];
         $customer->name = $shopifyCustomer['firstName'] . ' ' . $shopifyCustomer['lastName'];
-        $customer->email = $shopifyCustomer['email'];
+        $customer->email = $orderData['email'];
         $customer->address1 = $shopifyCustomer['defaultAddress']['address1'];
         $customer->address2 = $shopifyCustomer['defaultAddress']['address2'] ?? '';
         $customer->billing_address1 = $orderData['billing_address']['address1'];
@@ -223,7 +223,7 @@ class CreateOrderService
         $customer->billing_apellido = $orderData['billing_address']['last_name'];
         $customer->CodigoCia = $this->codigoCia;
         $customer->audit_date = $this->formatDatetimeForSQLServer($orderData['created_at']);
-        Logger::log($this->logFile, "Cliente Para Guardarse: \n " . json_encode($customer));
+        Logger::log($this->logFile, "Cliente Para Guardarse: \n " . json_encode($customer, JSON_PRETTY_PRINT));
         return $customer;
     }
 
@@ -245,7 +245,7 @@ class CreateOrderService
         $orderHead->audit_date = $this->formatDatetimeForSQLServer($orderData['created_at']);
         $orderHead->status = 1;
         $orderHead->CodigoCia = $this->codigoCia;
-        Logger::log($this->logFile, "Order Head para guardar: \n " . json_encode($orderHead));
+        Logger::log($this->logFile, "Order Head para guardar: \n " . json_encode($orderHead, JSON_PRETTY_PRINT));
         return $orderHead;
     }
 
@@ -295,7 +295,7 @@ class CreateOrderService
             $orderDetail->tags = $orderData['customer']['tags'] ?? 'NaN';
             $orderDetail->CodigoCia = $this->codigoCia;
             $orderDetail->flete = $orderDetail->shipping_amount;
-            Logger::log($this->logFile, "OrderDetail Para Guardar: \n " . json_encode($orderDetail));
+            Logger::log($this->logFile, "OrderDetail Para Guardar: \n " . json_encode($orderDetail, JSON_PRETTY_PRINT));
             $orderDetailItems[] = $orderDetail;
         }
         return $orderDetailItems;
