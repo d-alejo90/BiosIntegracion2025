@@ -18,7 +18,6 @@ abstract class BaseWebhook
   public function __construct($webhookData, $logFile, $saveMode = false)
   {
     $this->logFile = $logFile ?? "wh_run.txt";
-    Logger::log($this->logFile, "Server: " . json_encode($_SERVER));
     $this->storeUrl = $_SERVER['HTTP_X_SHOPIFY_SHOP_DOMAIN'];
     Logger::log($this->logFile, "Tienda: $this->storeUrl");
     $this->topic = $_SERVER['HTTP_X_SHOPIFY_TOPIC'];

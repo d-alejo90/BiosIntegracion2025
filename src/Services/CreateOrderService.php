@@ -71,20 +71,17 @@ class CreateOrderService
         if (empty($cedula)) {
             $message = "Fallo en la obtención de cedula de Shopify con order ID: $orderId";
             Logger::log($this->logFile, $message);
-            throw new \Exception($message, 1);
         }
 
         if (empty($cedulaBilling)) {
             $message = "Fallo en la obtención de cedula de facturacion de Shopify con order ID: $orderId";
             Logger::log($this->logFile, $message);
-            throw new \Exception($message, 1);
         }
 
         $normalizedCity = $this->normalizeString($orderData['shipping_address']['city']);
         if (empty($this->zipCodes[$normalizedCity])) {
             $message = "Fallo en la obtención de zip code de Shopify con order ID: $orderId";
             Logger::log($this->logFile, $message);
-            throw new \Exception($message, 1);
         }
 
         $customer = $this->mapCustomer($orderData, $shopifyCustomer, $cedulaBilling, $cedula);

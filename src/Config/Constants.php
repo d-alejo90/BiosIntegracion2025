@@ -21,6 +21,7 @@ final class Constants
     "Rionegro" => 773,
     "Bucaramanga" => 712,
     "Pereira" => 726,
+    "Barranquilla" => 705,
     "Vegas" => 800,
     "Bog" => 701,
     "Buc" => 712,
@@ -32,6 +33,7 @@ final class Constants
     "Sab" => 735,
     "La " => 735,
     "Per" => 726,
+    "Bar" => 705,
     "Veg" => 800,
   ];
 
