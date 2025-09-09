@@ -38,42 +38,42 @@ class StoreConfigFactory
         'storeName' => 'mizooco',
         'codigoCia' => '232',
       ],
-      'campo-azul-institucional.myshopify.com' => [
-        'shopifyConfig' => [
-          'ShopUrl' => $_ENV['STORE_URL_CAMPO_AZUL_INSTITUCIONAL'],
-          'AccessToken' => $_ENV['ACCESS_TOKEN_CAMPO_AZUL_INSTITUCIONAL'],
-          'ApiKey' => $_ENV['API_KEY_CAMPO_AZUL_INSTITUCIONAL'],
-          'ApiSecret' => $_ENV['API_SECRET_KEY_CAMPO_AZUL_INSTITUCIONAL'],
-          'ApiVersion' => $_ENV['SHOPIFY_API_VERSION'],
-          'WebhookSign' => $_ENV['WEBHOOK_SIGN_CAMPO_AZUL_INSTITUCIONAL'],
-        ],
-        'storeName' => 'campo_azul_institucional',
-        'codigoCia' => '232I',
-      ],
-      'pruebasmizooco.myshopify.com' => [
-        'shopifyConfig' => [
-          'ShopUrl' => $_ENV['STORE_URL_MIZOOCO_PRUEBAS'],
-          'AccessToken' => $_ENV['ACCESS_TOKEN_MIZOOCO_PRUEBAS'],
-          'ApiKey' => $_ENV['API_KEY_MIZOOCO_PRUEBAS'],
-          'ApiSecret' => $_ENV['API_SECRET_KEY_MIZOOCO_PRUEBAS'],
-          'ApiVersion' => $_ENV['SHOPIFY_API_VERSION'],
-          'WebhookSign' => $_ENV['WEBHOOK_SIGN_MIZOOCO_PRUEBAS'],
-        ],
-        'storeName' => 'pruebas_mizooco',
-        'codigoCia' => '232P',
-      ],
-      'prueba-campoazul.myshopify.com' => [
-        'shopifyConfig' => [
-          'ShopUrl' => $_ENV['STORE_URL_CAMPO_AZUL_PRUEBAS'],
-          'AccessToken' => $_ENV['ACCESS_TOKEN_CAMPO_AZUL_PRUEBAS'],
-          'ApiKey' => $_ENV['API_KEY_CAMPO_AZUL_PRUEBAS'],
-          'ApiSecret' => $_ENV['API_SECRET_KEY_CAMPO_AZUL_PRUEBAS'],
-          'ApiVersion' => $_ENV['SHOPIFY_API_VERSION'],
-          'WebhookSign' => $_ENV['WEBHOOK_SIGN_CAMPO_AZUL_PRUEBAS'],
-        ],
-        'storeName' => 'pruebas_campoazul',
-        'codigoCia' => '20P',
-      ],
+      // 'campo-azul-institucional.myshopify.com' => [
+      //   'shopifyConfig' => [
+      //     'ShopUrl' => $_ENV['STORE_URL_CAMPO_AZUL_INSTITUCIONAL'],
+      //     'AccessToken' => $_ENV['ACCESS_TOKEN_CAMPO_AZUL_INSTITUCIONAL'],
+      //     'ApiKey' => $_ENV['API_KEY_CAMPO_AZUL_INSTITUCIONAL'],
+      //     'ApiSecret' => $_ENV['API_SECRET_KEY_CAMPO_AZUL_INSTITUCIONAL'],
+      //     'ApiVersion' => $_ENV['SHOPIFY_API_VERSION'],
+      //     'WebhookSign' => $_ENV['WEBHOOK_SIGN_CAMPO_AZUL_INSTITUCIONAL'],
+      //   ],
+      //   'storeName' => 'campo_azul_institucional',
+      //   'codigoCia' => '232I',
+      // ],
+      // 'pruebasmizooco.myshopify.com' => [
+      //   'shopifyConfig' => [
+      //     'ShopUrl' => $_ENV['STORE_URL_MIZOOCO_PRUEBAS'],
+      //     'AccessToken' => $_ENV['ACCESS_TOKEN_MIZOOCO_PRUEBAS'],
+      //     'ApiKey' => $_ENV['API_KEY_MIZOOCO_PRUEBAS'],
+      //     'ApiSecret' => $_ENV['API_SECRET_KEY_MIZOOCO_PRUEBAS'],
+      //     'ApiVersion' => $_ENV['SHOPIFY_API_VERSION'],
+      //     'WebhookSign' => $_ENV['WEBHOOK_SIGN_MIZOOCO_PRUEBAS'],
+      //   ],
+      //   'storeName' => 'pruebas_mizooco',
+      //   'codigoCia' => '232P',
+      // ],
+      // 'prueba-campoazul.myshopify.com' => [
+      //   'shopifyConfig' => [
+      //     'ShopUrl' => $_ENV['STORE_URL_CAMPO_AZUL_PRUEBAS'],
+      //     'AccessToken' => $_ENV['ACCESS_TOKEN_CAMPO_AZUL_PRUEBAS'],
+      //     'ApiKey' => $_ENV['API_KEY_CAMPO_AZUL_PRUEBAS'],
+      //     'ApiSecret' => $_ENV['API_SECRET_KEY_CAMPO_AZUL_PRUEBAS'],
+      //     'ApiVersion' => $_ENV['SHOPIFY_API_VERSION'],
+      //     'WebhookSign' => $_ENV['WEBHOOK_SIGN_CAMPO_AZUL_PRUEBAS'],
+      //   ],
+      //   'storeName' => 'pruebas_campoazul',
+      //   'codigoCia' => '20P',
+      // ],
       // Agrega más tiendas según sea necesario
     ];
   }
