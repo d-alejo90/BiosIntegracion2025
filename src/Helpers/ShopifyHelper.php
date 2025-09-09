@@ -407,9 +407,18 @@ class ShopifyHelper
               productVariants {
                 id
                 title
-                selectedOptions {
-                  name
-                  value
+                sku
+                inventoryQuantity
+                inventoryItem {
+                  id
+                  inventoryLevels(first: 1) {
+                    nodes {
+                      location {
+                        id
+                        name
+                      }
+                    }
+                  }
                 }
               }
             }

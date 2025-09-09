@@ -100,10 +100,15 @@ class CreateProducts
     {
         $shopifyResponses = [];
         $bodegasValues = $this->formatValues($this->bodegas);
-        echo '<pre>';
-        print_r($groupedItems);
+        // echo '<pre>';
+        // print_r($groupedItems);
         foreach ($groupedItems as $groupId => $items) {
-            $existingProduct = $this->productRepository->findByGroupId($groupId);
+            $existingProduct = null;
+            if (str_contains($this->storeName, "campo")) {
+                $existingProduct = $this->productRepository->findBySku($groupId);
+            } else {
+                $existingProduct = $this->productRepository->findByGroupId($groupId);
+            }
             $variables = [];
             if (empty($existingProduct)) {
                 $variables = $this->buildShopifyProductVariables($items, $bodegasValues);
@@ -111,6 +116,7 @@ class CreateProducts
                 Logger::log($this->logFile, "Variables: " . json_encode($variables));
                 echo "===============CREATE======================";
                 $shopifyResponses[] = $this->shopifyHelper->createProducts($variables, $this->saveMode);
+                Logger::log($this->logFile, "Response Create: " . json_encode($shopifyResponses));
             } else {
                 // Accedemos a shopify para obtener la data del producto
                 $shopifyProduct = $this->shopifyHelper->getProductById($existingProduct);
@@ -143,6 +149,7 @@ class CreateProducts
                 Logger::log($this->logFile, "Update Product: " . $shopifyProduct["id"]);
                 Logger::log($this->logFile, "Variables: " . json_encode($variables));
                 $shopifyResponses[] = $this->shopifyHelper->productVariantsBulkCreate($variables, $this->saveMode);
+                Logger::log($this->logFile, "Response Update: " . json_encode($shopifyResponses));
             }
         }
         print_r($shopifyResponses);
@@ -372,40 +379,41 @@ class CreateProducts
         return $result;
     }
 
-    private function buildVariantsForCampoAzul(array $items, array $existingOptionValues = []): array
+    private function buildVariantsForCampoAzul(array $itemSiesaList, array $existingOptions = []): array
     {
+        $existingOptionValues = $existingOptions['Bodegas']['optionValues'] ?? [];
+        $validLocationNames = array_map(fn($opt) => $opt['name'], $existingOptionValues);
+        $missingItems = array_filter($itemSiesaList, function ($item) use ($validLocationNames) {
+            return !in_array($item->location_name, $validLocationNames);
+        });
+        $result = [];
+        foreach ($missingItems as $item) {
 
-        $result = array_map(function ($item) use ($existingOptionValues) {
+            // Valores base para creacion de nuevos productos
             $optionValues =  [
                 [
                     "optionName" => "Bodegas",
                     "name" => $this->bodegas[$item->location],
                 ],
             ];
-            if (!empty($existingOptionValues)) {
-                $optionValueIdBodega = $this->getIdByName($existingOptionValues['Bodegas'], $this->bodegas[$item->location]);
-                if (!empty($optionValueIdBodega)) {
-                    $optionValues = [
-                        "optionName" => "Bodegas",
-                        "optionId" => $optionValueIdBodega,
-                    ];
-                }
-            }
-            return [
-                "optionValues" => $optionValues,
-                "inventoryQuantities" => [
-                    [
-                        "locationId" => "gid://shopify/Location/$item->location",
-                        "name" => "available",
-                        "quantity" => 0,
-                    ],
-                ],
-                "inventoryItem" => [
-                    "sku" => $item->sku,
-                    "tracked" => true,
+            $inventoryQuantities = [
+                [
+                    "locationId" => "gid://shopify/Location/$item->location",
+                    "quantity" => 0,
+                    "name" => "available",
                 ],
             ];
-        }, $items);
+            $inventoryItem = [
+                "sku" => $item->sku,
+                "tracked" => true,
+            ];
+
+            $result[] = [
+                "optionValues" => $optionValues,
+                "inventoryQuantities" => $inventoryQuantities,
+                "inventoryItem" => $inventoryItem,
+            ];
+        }
         return $result;
     }
 
@@ -414,16 +422,26 @@ class CreateProducts
         foreach ($shopifyResponses as $response) {
             if (isset($response['data']['productSet']['product']['variants']['nodes'])) {
                 foreach ($response['data']['productSet']['product']['variants']['nodes'] as $node) {
-                    $product = $this->mapProductFromNode($node, $response);
+                    $productId = $response['data']['productSet']['product']['id'];
+                    $product = $this->mapProductFromNode($node, $productId);
                     Logger::log($this->logFile, "Creating product: " . $product->sku);
                     Logger::log($this->logFile, "Product: " . json_encode($product));
+                    $this->productRepository->create($product);
+                }
+            }
+            if (isset($response['data']['productVariantsBulkCreate']['productVariants'])) {
+                foreach ($response['data']['productVariantsBulkCreate']['productVariants'] as $variant) {
+                    $productId = $response['data']['productVariantsBulkCreate']['product']['id'];
+                    $product = $this->mapProductFromNode($variant, $productId);
+                    Logger::log($this->logFile, "Creating product variant: " . $product->sku);
+                    Logger::log($this->logFile, "Product variant: " . json_encode($product));
                     $this->productRepository->create($product);
                 }
             }
         }
     }
 
-    private function mapProductFromNode(array $node, array $response): Product
+    private function mapProductFromNode(array $node, string $productId): Product
     {
         $product = new Product();
         $product->sku = $node['sku'];
@@ -431,7 +449,7 @@ class CreateProducts
         $product->nota = 'Creado desde Integracion';
         $product->audit_date = date('Y-m-d H:i:s');
         $product->estado = '1';
-        $product->prod_id = $this->extractId($response['data']['productSet']['product']['id']);
+        $product->prod_id = $this->extractId($productId);
         $product->inve_id = $this->extractId($node['inventoryItem']['id']);
         $product->vari_id = $this->extractId($node['id']);
         $product->cia_cod = $this->codigoCia == '232P' ? '20' : $this->codigoCia;

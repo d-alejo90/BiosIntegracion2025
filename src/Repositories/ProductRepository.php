@@ -92,18 +92,38 @@ class ProductRepository
     }
 
     /**
+     * Obtiene un producto por su SKU.
+     */
+    public function findBySku($sku)
+    {
+        $query = "SELECT prod_id as shopify_product_id FROM ctrlCreateProducts WHERE sku = TRIM(:sku)";
+        $stmt = $this->db->prepare($query);
+        $stmt->bindParam(':sku', $sku);
+        $stmt->execute();
+
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($row) {
+            return $row['shopify_product_id'];
+        }
+
+        return null;
+    }
+
+
+    /**
      * Crea un nuevo producto.
      */
     public function create(Product $product)
     {
         $query = "INSERT INTO ctrlCreateProducts (sku, locacion, nota, audit_date, estado, prod_id, inve_id, vari_id, cia_cod) 
-                  VALUES (:sku, :locacion, :nota, CAST(:audit_date as DATETIME), :estado, :prod_id, :inve_id, :vari_id, :cia_cod)";
+                  VALUES (:sku, :locacion, :nota, GETDATE(), :estado, :prod_id, :inve_id, :vari_id, :cia_cod)";
         $stmt = $this->db->prepare($query);
 
         $stmt->bindParam(':sku', $product->sku);
         $stmt->bindParam(':locacion', $product->locacion);
         $stmt->bindParam(':nota', $product->nota);
-        $stmt->bindParam(':audit_date', $product->audit_date);
+        // $stmt->bindParam(':audit_date', $product->audit_date);
         $stmt->bindParam(':estado', $product->estado);
         $stmt->bindParam(':prod_id', $product->prod_id);
         $stmt->bindParam(':inve_id', $product->inve_id);
@@ -119,7 +139,7 @@ class ProductRepository
     public function update(Product $product)
     {
         $query = "UPDATE ctrlCreateProducts 
-                  SET sku = :sku, locacion = :locacion, nota = :nota, audit_date = :audit_date, estado = :estado, 
+                  SET sku = :sku, locacion = :locacion, nota = :nota, audit_date = GETDATE(), estado = :estado, 
                       prod_id = :prod_id, inve_id = :inve_id, vari_id = :vari_id, cia_cod = :cia_cod 
                   WHERE id = :id";
         $stmt = $this->db->prepare($query);
@@ -128,7 +148,7 @@ class ProductRepository
         $stmt->bindParam(':sku', $product->sku);
         $stmt->bindParam(':locacion', $product->locacion);
         $stmt->bindParam(':nota', $product->nota);
-        $stmt->bindParam(':audit_date', $product->audit_date);
+        // $stmt->bindParam(':audit_date', $product->audit_date);
         $stmt->bindParam(':estado', $product->estado);
         $stmt->bindParam(':prod_id', $product->prod_id);
         $stmt->bindParam(':inve_id', $product->inve_id);
