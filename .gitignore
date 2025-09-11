@@ -1,3 +1,57 @@
+# Environment files
 .env
+.env.local
+.env.*.local
+.env.backup
+
+# Composer
+/vendor/
+composer.phar
+
+# Dependency directories
+node_modules/
+
+# Logs
+*.log
 logs/
+/log/
+
+# Testing artifacts
+.phpunit.result.cache
+/phpunit.xml
+phpunit.xml.dist
+.phpunit.cache/
+
+# Code coverage reports
+/coverage/
+*.clover
+
+# Caches and temporary files
+*.cache
 .php-cs-fixer.cache
+.php_cs.cache
+.php_cs.dist.cache
+/cache/
+/tmp/
+*.tmp
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.phpstorm.meta.php
+_ide_helper.php
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project-specific exclusions
+.claude
