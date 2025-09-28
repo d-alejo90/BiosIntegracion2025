@@ -1,0 +1,496 @@
+{
+  "order": {
+    "id": 6184407073022,
+    "admin_graphql_api_id": "gid:\/\/shopify\/Order\/6184407073022",
+    "app_id": 580111,
+    "browser_ip": "190.130.101.125",
+    "buyer_accepts_marketing": false,
+    "cancel_reason": null,
+    "cancelled_at": null,
+    "cart_token": "hWN3694wq2W2ecTz4I7dE2t8",
+    "checkout_id": 36890343112958,
+    "checkout_token": "1d0ae053d213e5da63e5844ad8ec4548",
+    "client_details": {
+      "accept_language": "en",
+      "browser_height": null,
+      "browser_ip": "190.130.101.125",
+      "browser_width": null,
+      "session_hash": null,
+      "user_agent": "Mozilla\/5.0 (X11; Linux x86_64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/138.0.0.0 Safari\/537.36"
+    },
+    "closed_at": null,
+    "company": null,
+    "confirmation_number": "NPVLVQGXD",
+    "confirmed": true,
+    "contact_email": "diecel1990@gmail.com",
+    "created_at": "2025-09-17T19:41:00-04:00",
+    "currency": "COP",
+    "current_subtotal_price": "885.95",
+    "current_subtotal_price_set": {
+      "shop_money": {
+        "amount": "885.95",
+        "currency_code": "COP"
+      },
+      "presentment_money": {
+        "amount": "885.95",
+        "currency_code": "COP"
+      }
+    },
+    "current_total_additional_fees_set": null,
+    "current_total_discounts": "699.95",
+    "current_total_discounts_set": {
+      "shop_money": {
+        "amount": "699.95",
+        "currency_code": "COP"
+      },
+      "presentment_money": {
+        "amount": "699.95",
+        "currency_code": "COP"
+      }
+    },
+    "current_total_duties_set": null,
+    "current_total_price": "1054.28",
+    "current_total_price_set": {
+      "shop_money": {
+        "amount": "1054.28",
+        "currency_code": "COP"
+      },
+      "presentment_money": {
+        "amount": "1054.28",
+        "currency_code": "COP"
+      }
+    },
+    "current_total_tax": "168.33",
+    "current_total_tax_set": {
+      "shop_money": {
+        "amount": "168.33",
+        "currency_code": "COP"
+      },
+      "presentment_money": {
+        "amount": "168.33",
+        "currency_code": "COP"
+      }
+    },
+    "customer_locale": "en-CO",
+    "device_id": null,
+    "discount_codes": [
+      {
+        "code": "BV4B25VMD339",
+        "amount": "699.95",
+        "type": "percentage"
+      }
+    ],
+    "email": "diecel1990@gmail.com",
+    "estimated_taxes": false,
+    "financial_status": "paid",
+    "fulfillment_status": null,
+    "landing_site": "\/?_bt=eyJfcmFpbHMiOnsibWVzc2FnZSI6IkJBaEpJaU5rYVdWbmJ5MWpaV3hwY3kxMFpYTjBMbTE1YzJodmNHbG1lUzVqYjIwR09nWkZWQT09IiwiZXhwIjoiMjAyNS0wOS0xOFQwMDozMzo0OC4xMTFaIiwicHVyIjoicGVybWFuZW50X3Bhc3N3b3JkX2J5cGFzcyJ9fQ==--1ed03461082d7e0890c2f7f159b26695c92a83ad",
+    "landing_site_ref": null,
+    "location_id": null,
+    "merchant_of_record_app_id": null,
+    "name": "#1003",
+    "note": null,
+    "note_attributes": [],
+    "number": 3,
+    "order_number": 1003,
+    "order_status_url": "https:\/\/diego-celis-test.myshopify.com\/71640514814\/orders\/b1b69f904e2201c7bab9b14db117ed26\/authenticate?key=ea540cf0fb2305daae2eafe5ef826a74",
+    "original_total_additional_fees_set": null,
+    "original_total_duties_set": null,
+    "payment_gateway_names": [
+      "bogus"
+    ],
+    "phone": null,
+    "po_number": null,
+    "presentment_currency": "COP",
+    "processed_at": "2025-09-17T19:40:58-04:00",
+    "reference": null,
+    "referring_site": "https:\/\/admin.shopify.com\/",
+    "source_identifier": null,
+    "source_name": "web",
+    "source_url": null,
+    "subtotal_price": "885.95",
+    "subtotal_price_set": {
+      "shop_money": {
+        "amount": "885.95",
+        "currency_code": "COP"
+      },
+      "presentment_money": {
+        "amount": "885.95",
+        "currency_code": "COP"
+      }
+    },
+    "tags": "",
+    "tax_exempt": false,
+    "tax_lines": [
+      {
+        "price": "168.33",
+        "rate": 0.19,
+        "title": "VAT",
+        "price_set": {
+          "shop_money": {
+            "amount": "168.33",
+            "currency_code": "COP"
+          },
+          "presentment_money": {
+            "amount": "168.33",
+            "currency_code": "COP"
+          }
+        },
+        "channel_liable": false
+      }
+    ],
+    "taxes_included": false,
+    "test": true,
+    "token": "b1b69f904e2201c7bab9b14db117ed26",
+    "total_discounts": "699.95",
+    "total_discounts_set": {
+      "shop_money": {
+        "amount": "699.95",
+        "currency_code": "COP"
+      },
+      "presentment_money": {
+        "amount": "699.95",
+        "currency_code": "COP"
+      }
+    },
+    "total_line_items_price": "1585.90",
+    "total_line_items_price_set": {
+      "shop_money": {
+        "amount": "1585.90",
+        "currency_code": "COP"
+      },
+      "presentment_money": {
+        "amount": "1585.90",
+        "currency_code": "COP"
+      }
+    },
+    "total_outstanding": "0.00",
+    "total_price": "1054.28",
+    "total_price_set": {
+      "shop_money": {
+        "amount": "1054.28",
+        "currency_code": "COP"
+      },
+      "presentment_money": {
+        "amount": "1054.28",
+        "currency_code": "COP"
+      }
+    },
+    "total_shipping_price_set": {
+      "shop_money": {
+        "amount": "0.00",
+        "currency_code": "COP"
+      },
+      "presentment_money": {
+        "amount": "0.00",
+        "currency_code": "COP"
+      }
+    },
+    "total_tax": "168.33",
+    "total_tax_set": {
+      "shop_money": {
+        "amount": "168.33",
+        "currency_code": "COP"
+      },
+      "presentment_money": {
+        "amount": "168.33",
+        "currency_code": "COP"
+      }
+    },
+    "total_tip_received": "0.00",
+    "total_weight": 4536,
+    "updated_at": "2025-09-17T19:41:02-04:00",
+    "user_id": null,
+    "billing_address": {
+      "first_name": "Diego",
+      "address1": "Test Street",
+      "phone": null,
+      "city": "Armenia",
+      "zip": null,
+      "province": "Quindío",
+      "country": "Colombia",
+      "last_name": "Celis",
+      "address2": null,
+      "company": null,
+      "latitude": 4.535000399999999,
+      "longitude": -75.6756888,
+      "name": "Diego Celis",
+      "country_code": "CO",
+      "province_code": "QUI"
+    },
+    "customer": {
+      "id": 8406347677950,
+      "created_at": "2025-07-03T18:57:42-04:00",
+      "updated_at": "2025-09-17T19:41:01-04:00",
+      "first_name": "Diego",
+      "last_name": "Celis",
+      "state": "disabled",
+      "note": null,
+      "verified_email": true,
+      "multipass_identifier": null,
+      "tax_exempt": false,
+      "email_marketing_consent": {
+        "state": "not_subscribed",
+        "opt_in_level": "single_opt_in",
+        "consent_updated_at": null
+      },
+      "sms_marketing_consent": null,
+      "tags": "",
+      "email": "diecel1990@gmail.com",
+      "phone": null,
+      "currency": "COP",
+      "tax_exemptions": [],
+      "admin_graphql_api_id": "gid:\/\/shopify\/Customer\/8406347677950",
+      "default_address": {
+        "id": 9912882036990,
+        "customer_id": 8406347677950,
+        "first_name": "Diego",
+        "last_name": "Celis",
+        "company": null,
+        "address1": "Test Street",
+        "address2": null,
+        "city": "Armenia",
+        "province": "Quindío",
+        "country": "Colombia",
+        "zip": null,
+        "phone": null,
+        "name": "Diego Celis",
+        "province_code": "QUI",
+        "country_code": "CO",
+        "country_name": "Colombia",
+        "default": true
+      }
+    },
+    "discount_applications": [
+      {
+        "target_type": "line_item",
+        "type": "discount_code",
+        "value": "100.0",
+        "value_type": "percentage",
+        "allocation_method": "each",
+        "target_selection": "entitled",
+        "code": "BV4B25VMD339"
+      }
+    ],
+    "fulfillments": [],
+    "line_items": [
+      {
+        "id": 14989086032126,
+        "admin_graphql_api_id": "gid:\/\/shopify\/LineItem\/14989086032126",
+        "attributed_staffs": [],
+        "current_quantity": 1,
+        "fulfillable_quantity": 1,
+        "fulfillment_service": "manual",
+        "fulfillment_status": null,
+        "gift_card": false,
+        "grams": 4536,
+        "name": "The Complete Snowboard - Ice",
+        "price": "699.95",
+        "price_set": {
+          "shop_money": {
+            "amount": "699.95",
+            "currency_code": "COP"
+          },
+          "presentment_money": {
+            "amount": "699.95",
+            "currency_code": "COP"
+          }
+        },
+        "product_exists": true,
+        "product_id": 8686172111102,
+        "properties": [],
+        "quantity": 1,
+        "requires_shipping": true,
+        "sku": null,
+        "taxable": true,
+        "title": "The Complete Snowboard",
+        "total_discount": "0.00",
+        "total_discount_set": {
+          "shop_money": {
+            "amount": "0.00",
+            "currency_code": "COP"
+          },
+          "presentment_money": {
+            "amount": "0.00",
+            "currency_code": "COP"
+          }
+        },
+        "variant_id": 45931414454526,
+        "variant_inventory_management": "shopify",
+        "variant_title": "Ice",
+        "vendor": "Snowboard Vendor",
+        "tax_lines": [
+          {
+            "channel_liable": false,
+            "price": "0.00",
+            "price_set": {
+              "shop_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              }
+            },
+            "rate": 0.19,
+            "title": "VAT"
+          }
+        ],
+        "duties": [],
+        "discount_allocations": [
+          {
+            "amount": "699.95",
+            "amount_set": {
+              "shop_money": {
+                "amount": "699.95",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "699.95",
+                "currency_code": "COP"
+              }
+            },
+            "discount_application_index": 0
+          }
+        ]
+      },
+      {
+        "id": 14989086064894,
+        "admin_graphql_api_id": "gid:\/\/shopify\/LineItem\/14989086064894",
+        "attributed_staffs": [],
+        "current_quantity": 1,
+        "fulfillable_quantity": 1,
+        "fulfillment_service": "manual",
+        "fulfillment_status": null,
+        "gift_card": false,
+        "grams": 0,
+        "name": "The Videographer Snowboard",
+        "price": "885.95",
+        "price_set": {
+          "shop_money": {
+            "amount": "885.95",
+            "currency_code": "COP"
+          },
+          "presentment_money": {
+            "amount": "885.95",
+            "currency_code": "COP"
+          }
+        },
+        "product_exists": true,
+        "product_id": 8686172242174,
+        "properties": [],
+        "quantity": 1,
+        "requires_shipping": true,
+        "sku": null,
+        "taxable": true,
+        "title": "The Videographer Snowboard",
+        "total_discount": "0.00",
+        "total_discount_set": {
+          "shop_money": {
+            "amount": "0.00",
+            "currency_code": "COP"
+          },
+          "presentment_money": {
+            "amount": "0.00",
+            "currency_code": "COP"
+          }
+        },
+        "variant_id": 45931414749438,
+        "variant_inventory_management": "shopify",
+        "variant_title": null,
+        "vendor": "diego-celis-test",
+        "tax_lines": [
+          {
+            "channel_liable": false,
+            "price": "168.33",
+            "price_set": {
+              "shop_money": {
+                "amount": "168.33",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "168.33",
+                "currency_code": "COP"
+              }
+            },
+            "rate": 0.19,
+            "title": "VAT"
+          }
+        ],
+        "duties": [],
+        "discount_allocations": [
+          {
+            "amount": "0.00",
+            "amount_set": {
+              "shop_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              },
+              "presentment_money": {
+                "amount": "0.00",
+                "currency_code": "COP"
+              }
+            },
+            "discount_application_index": 0
+          }
+        ]
+      }
+    ],
+    "payment_terms": null,
+    "refunds": [],
+    "shipping_address": {
+      "first_name": "Diego",
+      "address1": "Test Street",
+      "phone": null,
+      "city": "Armenia",
+      "zip": null,
+      "province": "Quindío",
+      "country": "Colombia",
+      "last_name": "Celis",
+      "address2": null,
+      "company": null,
+      "latitude": 4.535000399999999,
+      "longitude": -75.6756888,
+      "name": "Diego Celis",
+      "country_code": "CO",
+      "province_code": "QUI"
+    },
+    "shipping_lines": [
+      {
+        "id": 5018888863998,
+        "carrier_identifier": null,
+        "code": "Standard",
+        "discounted_price": "0.00",
+        "discounted_price_set": {
+          "shop_money": {
+            "amount": "0.00",
+            "currency_code": "COP"
+          },
+          "presentment_money": {
+            "amount": "0.00",
+            "currency_code": "COP"
+          }
+        },
+        "is_removed": false,
+        "phone": null,
+        "price": "0.00",
+        "price_set": {
+          "shop_money": {
+            "amount": "0.00",
+            "currency_code": "COP"
+          },
+          "presentment_money": {
+            "amount": "0.00",
+            "currency_code": "COP"
+          }
+        },
+        "requested_fulfillment_service_id": null,
+        "source": "shopify",
+        "title": "Standard",
+        "tax_lines": [],
+        "discount_allocations": []
+      }
+    ]
+  }
+}

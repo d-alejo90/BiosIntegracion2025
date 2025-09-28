@@ -28,4 +28,5 @@ class OrderDetail
     public $tags;
     public $CodigoCia;
     public $flete;
+    public $motivo_id;
 }

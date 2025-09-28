@@ -21,8 +21,8 @@ class OrderDetailRepository
             order_id, customer_id, created_at, currency, notes, sku, quantity, variant_title, 
             price, price_taxes, discount_amount, discount_target_type, shipping_amount, 
             country_code_shipping, province_code_shipping, city_code_shipping, 
-            country_code_billing, province_code_billing, city_code_billing, tags, CodigoCia, flete
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            country_code_billing, province_code_billing, city_code_billing, tags, CodigoCia, flete, motivo_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         $statement = $this->db->prepare($sql);
         return $statement->execute([
@@ -47,7 +47,8 @@ class OrderDetailRepository
             $orderDetail->city_code_billing,
             $orderDetail->tags,
             $orderDetail->CodigoCia,
-            $orderDetail->flete
+            $orderDetail->flete,
+            $orderDetail->motivo_id
         ]);
     }
 }

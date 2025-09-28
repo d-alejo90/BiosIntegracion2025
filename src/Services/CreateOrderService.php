@@ -292,10 +292,50 @@ class CreateOrderService
             $orderDetail->tags = $orderData['customer']['tags'] ?? 'NaN';
             $orderDetail->CodigoCia = $this->codigoCia;
             $orderDetail->flete = $orderDetail->shipping_amount;
+            
+            // Determine motivo_id based on whether the product is free (Buy X get Y discount)
+            $orderDetail->motivo_id = $this->determineMotivoId($lineItem);
+            
             Logger::log($this->logFile, "OrderDetail Para Guardar: \n " . json_encode($orderDetail, JSON_PRETTY_PRINT));
             $orderDetailItems[] = $orderDetail;
         }
         return $orderDetailItems;
+    }
+
+    /**
+     * Determines the motivo_id based on whether the product is free (Buy X get Y discount)
+     * 
+     * @param array $lineItem The Shopify line item data
+     * @return string '04' for free products, '01' for regular products
+     */
+    private function determineMotivoId(array $lineItem): string
+    {
+        $price = floatval($lineItem['price'] ?? 0);
+        $discountAmount = floatval($lineItem['discount_allocations'][0]['amount'] ?? 0);
+        $totalDiscount = floatval($lineItem['total_discount'] ?? 0);
+        
+        // Calculate effective price after discounts
+        $effectivePrice = $price - $discountAmount;
+        
+        // A product is considered free (Buy X get Y) if:
+        // 1. The price is 0
+        // 2. The discount amount equals the price (100% discount)
+        // 3. The effective price after discount is 0 or negative
+        // 4. Total discount equals the original price
+        $isFreeProduct = (
+            $price == 0 || 
+            ($discountAmount > 0 && $discountAmount >= $price) ||
+            $effectivePrice <= 0 ||
+            ($totalDiscount > 0 && $totalDiscount >= $price)
+        );
+        
+        if ($isFreeProduct) {
+            Logger::log($this->logFile, "Free product detected (Buy X get Y) - SKU: {$lineItem['sku']}, Price: $price, Discount: $discountAmount, Total Discount: $totalDiscount, Effective Price: $effectivePrice");
+            return '04'; // Free product (Buy X get Y)
+        }
+        
+        Logger::log($this->logFile, "Regular product - SKU: {$lineItem['sku']}, Price: $price, Discount: $discountAmount, Effective Price: $effectivePrice");
+        return '01'; // Regular product
     }
 
     /**

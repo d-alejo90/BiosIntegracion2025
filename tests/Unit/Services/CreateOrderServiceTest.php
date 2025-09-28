@@ -76,4 +76,153 @@ class CreateOrderServiceTest extends \Tests\TestCase
     {
         $this->markTestIncomplete('This test requires service instance setup.');
     }
+
+    public function testDetermineMotivoIdForRegularProduct()
+    {
+        $service = new CreateOrderService('mizooco.myshopify.com', false);
+        
+        $lineItem = [
+            'sku' => 'TEST-SKU-001',
+            'price' => '29.99',
+            'original_line_price' => '29.99',
+            'discount_allocations' => []
+        ];
+
+        $result = $this->callPrivateMethod($service, 'determineMotivoId', [$lineItem]);
+        
+        $this->assertEquals('01', $result);
+    }
+
+    public function testDetermineMotivoIdForFreeProductWithZeroPrice()
+    {
+        $service = new CreateOrderService('mizooco.myshopify.com', false);
+        
+        $lineItem = [
+            'sku' => 'FREE-SKU-001',
+            'price' => '0.00',
+            'original_line_price' => '19.99',
+            'discount_allocations' => [
+                ['amount' => '19.99']
+            ]
+        ];
+
+        $result = $this->callPrivateMethod($service, 'determineMotivoId', [$lineItem]);
+        
+        $this->assertEquals('04', $result);
+    }
+
+    public function testDetermineMotivoIdForFreeProductWithFullDiscount()
+    {
+        $service = new CreateOrderService('mizooco.myshopify.com', false);
+        
+        $lineItem = [
+            'sku' => 'DISCOUNTED-SKU-001',
+            'price' => '15.99',
+            'original_line_price' => '15.99',
+            'discount_allocations' => [
+                ['amount' => '15.99']
+            ]
+        ];
+
+        $result = $this->callPrivateMethod($service, 'determineMotivoId', [$lineItem]);
+        
+        $this->assertEquals('04', $result);
+    }
+
+    public function testDetermineMotivoIdForPartiallyDiscountedProduct()
+    {
+        $service = new CreateOrderService('mizooco.myshopify.com', false);
+        
+        $lineItem = [
+            'sku' => 'PARTIAL-DISCOUNT-SKU',
+            'price' => '19.99',
+            'original_line_price' => '29.99',
+            'discount_allocations' => [
+                ['amount' => '10.00']
+            ]
+        ];
+
+        $result = $this->callPrivateMethod($service, 'determineMotivoId', [$lineItem]);
+        
+        $this->assertEquals('01', $result);
+    }
+
+    public function testDetermineMotivoIdWithMissingDiscountData()
+    {
+        $service = new CreateOrderService('mizooco.myshopify.com', false);
+        
+        $lineItem = [
+            'sku' => 'NO-DISCOUNT-SKU',
+            'price' => '25.00'
+        ];
+
+        $result = $this->callPrivateMethod($service, 'determineMotivoId', [$lineItem]);
+        
+        $this->assertEquals('01', $result);
+    }
+
+    public function testDetermineMotivoIdForBuyXGetYFreeProduct()
+    {
+        $service = new CreateOrderService('mizooco.myshopify.com', false);
+        
+        // Simulating "The Complete Snowboard" from the payload - the FREE product
+        $lineItem = [
+            'sku' => null,
+            'price' => '699.95',
+            'total_discount' => '0.00',
+            'discount_allocations' => [
+                [
+                    'amount' => '699.95',
+                    'amount_set' => [
+                        'shop_money' => [
+                            'amount' => '699.95',
+                            'currency_code' => 'COP'
+                        ]
+                    ],
+                    'discount_application_index' => 0
+                ]
+            ]
+        ];
+
+        $result = $this->callPrivateMethod($service, 'determineMotivoId', [$lineItem]);
+        
+        $this->assertEquals('04', $result);
+    }
+
+    public function testDetermineMotivoIdForBuyXGetYPaidProduct()
+    {
+        $service = new CreateOrderService('mizooco.myshopify.com', false);
+        
+        // Simulating "The Videographer Snowboard" from the payload - the PAID product
+        $lineItem = [
+            'sku' => null,
+            'price' => '885.95',
+            'total_discount' => '0.00',
+            'discount_allocations' => [
+                [
+                    'amount' => '0.00',
+                    'amount_set' => [
+                        'shop_money' => [
+                            'amount' => '0.00',
+                            'currency_code' => 'COP'
+                        ]
+                    ],
+                    'discount_application_index' => 0
+                ]
+            ]
+        ];
+
+        $result = $this->callPrivateMethod($service, 'determineMotivoId', [$lineItem]);
+        
+        $this->assertEquals('01', $result);
+    }
+
+    private function callPrivateMethod($object, $methodName, array $parameters = [])
+    {
+        $reflection = new \ReflectionClass(get_class($object));
+        $method = $reflection->getMethod($methodName);
+        $method->setAccessible(true);
+
+        return $method->invokeArgs($object, $parameters);
+    }
 }
