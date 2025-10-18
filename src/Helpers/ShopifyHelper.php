@@ -192,13 +192,10 @@ class ShopifyHelper
 
   public function adjustInventoryQty($adjustmentChanges, $saveMode = false)
   {
-    $inventoryAdjustmentQuantitiesInput = [
-      "input" => [
-        "reason" => "correction",
-        "name" => "available",
-        "changes" => $adjustmentChanges,
-      ],
-    ];
+    // Shopify API limit is 250 items per inventoryAdjustQuantities mutation
+    $batchSize = 250;
+    $chunks = array_chunk($adjustmentChanges, $batchSize);
+
     $query = <<<GQL
           mutation inventoryAdjustQuantities(\$input: InventoryAdjustQuantitiesInput!) {
               inventoryAdjustQuantities(input: \$input) {
@@ -216,20 +213,40 @@ class ShopifyHelper
                       }
                   }
               }
-          } 
+          }
         GQL;
-    try {
-      echo '<pre>';
-      print_r(json_encode($inventoryAdjustmentQuantitiesInput, JSON_PRETTY_PRINT));
-      $response = "Save Mode: Off";
-      if ($saveMode) {
-        $response = $this->shopify->GraphQL->post($query, null, null, $inventoryAdjustmentQuantitiesInput);
+
+    $responses = [];
+
+    foreach ($chunks as $index => $chunk) {
+      $inventoryAdjustmentQuantitiesInput = [
+        "input" => [
+          "reason" => "correction",
+          "name" => "available",
+          "changes" => $chunk,
+        ],
+      ];
+
+      try {
+        echo '<pre>';
+        echo "Batch " . ($index + 1) . " of " . count($chunks) . " (" . count($chunk) . " items)\n";
+        print_r(json_encode($inventoryAdjustmentQuantitiesInput, JSON_PRETTY_PRINT));
+
+        if ($saveMode) {
+          $response = $this->shopify->GraphQL->post($query, null, null, $inventoryAdjustmentQuantitiesInput);
+          $responses[] = $response;
+        } else {
+          $responses[] = "Save Mode: Off - Batch " . ($index + 1);
+        }
+      } catch (\Exception $e) {
+        echo '<pre>';
+        echo "Error in batch " . ($index + 1) . ":\n";
+        print_r($e);
+        $responses[] = ['error' => $e->getMessage(), 'batch' => $index + 1];
       }
-      return $response;
-    } catch (\Exception $e) {
-      echo '<pre>';
-      print_r($e);
     }
+
+    return $responses;
   }
 
   public function updateVariantPrices($variantPricesVariable, $saveMode = false)
