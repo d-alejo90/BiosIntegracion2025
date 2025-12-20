@@ -38,20 +38,24 @@ composer update
 ### Core Components
 
 **Webhooks** (`src/Webhooks/`)
-- `BaseWebhook`: Abstract class for HMAC verification and common webhook functionality
-- `CreateOrder`: Handles order creation from Shopify
-- `CancelOrder`: Handles order cancellation
-- `CreateManualOrder`: Manual order creation webhook
+- `BaseWebhook`: Abstract class for HMAC-SHA256 verification of Shopify webhooks
+- `BaseManualWebhook`: Abstract class for manual/API-triggered webhooks (no HMAC verification)
+- `CreateOrder`: Handles automatic order creation from Shopify webhooks
+- `CancelOrder`: Handles order cancellation webhooks
+- `CreateManualOrder`: Manual order creation (extends BaseManualWebhook)
 
 **Services** (`src/Services/`)
 - `CreateOrderService`: Core business logic for processing Shopify orders into SIESA format
+  - Handles discount allocations (including Buy X Get Y promotions)
+  - Maps Shopify line items to SIESA order details
+  - Processes customer data and city/ZIP code mapping
 - `CancelOrderService`: Handles order cancellation logic
 
 **CronJobs** (`src/CronJobs/`)
-- `CreateProducts`: Syncs products from SIESA to Shopify
-- `UpdateInventory`: Updates inventory levels from SIESA to Shopify
+- `CreateProducts`: Syncs products from SIESA to Shopify (supports optional SKU filtering via GET params)
+- `UpdateInventory`: Updates inventory levels from SIESA to Shopify (optimized with batching)
 - `UpdatePrices`: Syncs price changes from SIESA to Shopify
-- `ProcessFulfillments`: Processes order fulfillments
+- `ProcessFulfillments`: Processes order fulfillments from SIESA to Shopify
 
 **Repositories** (`src/Repositories/`)
 - Repository pattern for database operations
@@ -84,10 +88,15 @@ composer update
 ### Public Endpoints
 
 **Webhooks** (`public/WebHooks/`)
-- Shopify webhook endpoints for order events
+- `CreateOrder.php`: Receives Shopify order creation webhooks
+- `CancelOrder.php`: Receives Shopify order cancellation webhooks
+- `CreateManualOrder.php`: Manual order creation endpoint (no HMAC verification)
 
 **CronJobs** (`public/CronJobs/`)
-- Store-specific cron job endpoints (e.g., `CreateProductsCampoAzul.php`, `UpdateInventoryMizooco.php`)
+Each cron job has store-specific entry points:
+- Campo Azul endpoints: `CreateProductsCampoAzul.php`, `UpdateInventoryCampoAzul.php`, `UpdatePricesCampoAzul.php`, `ProcessFulfillmentsCampoAzul.php`
+- Mizooco endpoints: `CreateProductsMizooco.php`, `UpdateInventoryMizooco.php`, `UpdatePricesMizooco.php`, `ProcessFulfillmentsMizooco.php`
+- Entry points pass store URL to corresponding CronJob class in `src/CronJobs/`
 
 ### Database Integration
 
@@ -114,3 +123,19 @@ Requires `.env` file with:
 ### Logging
 
 Uses custom `Logger` helper (`src/Helpers/Logger.php`) for file-based logging with store-specific log files.
+
+### Important Business Logic
+
+**Discount Handling**
+- Supports Shopify's discount allocations including Buy X Get Y (BXGY) promotions
+- Discount amounts extracted from `line_item['discount_allocations'][0]['amount']`
+- Applied at the line item level in OrderDetail records
+
+**Store-Specific Mappings**
+- Each store has unique company codes (codigoCia): Campo Azul uses '232P', Mizooco uses '232'
+- ZIP code mappings in Constants.php map city names to SIESA warehouse codes
+- Warehouse (BODEGA) mappings stored in Constants for fulfillment routing
+
+**Special Company Code Handling**
+- ProductRepository translates '232P' to '20' when querying SIESA database
+- This allows Campo Azul to use code 232P in Shopify while SIESA uses code 20
