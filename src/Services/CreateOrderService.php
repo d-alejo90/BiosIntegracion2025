@@ -26,8 +26,10 @@ class CreateOrderService
     private $zipCodes;
     private $saveMode;
     private $logFile;
+    private $billingAddressValidator;
+    private $addressSplitter;
 
-    public function __construct($storeUrl, $saveMode = true)
+    public function __construct($storeUrl, $saveMode = true, $billingAddressValidator = null, $addressSplitter = null)
     {
         $this->orderHeadRepository = new OrderHeadRepository();
         $this->orderDetailRepository = new OrderDetailRepository();
@@ -43,6 +45,10 @@ class CreateOrderService
         $this->shopifyHelper = new ShopifyHelper($config['shopifyConfig']);
         $this->saveMode = $saveMode;
         $this->logFile = "wh_run_$this->storeName.txt";
+
+        // Inicializar servicios de validación y fragmentación de direcciones
+        $this->billingAddressValidator = $billingAddressValidator ?? new BillingAddressValidatorService($this->logFile);
+        $this->addressSplitter = $addressSplitter ?? new AddressSplitterService($this->logFile);
     }
 
     public function processOrder($orderData)
@@ -66,7 +72,7 @@ class CreateOrderService
         $shopifyOrderData = $this->getShopifyOrderData($orderId);
         $shopifyCustomer = $this->getShopifyCustomer($shopifyOrderData);
 
-        [$cedula, $cedulaBilling] = $this->getCedulas($shopifyOrderData);
+        [$cedula, $cedulaBilling] = $this->getCedulas($shopifyOrderData, $orderId);
 
         if (empty($cedula)) {
             $message = "Fallo en la obtención de cedula de Shopify con order ID: $orderId";
@@ -185,29 +191,63 @@ class CreateOrderService
         return $shopifyCustomer;
     }
 
-    private function getCedulas($orderData)
+    private function getCedulas($orderData, $orderId)
     {
         $cedula = $orderData['cedula']['value'] ?? null;
         $cedulaBilling = $orderData['cedulaFacturacion']['value'] ?? $cedula;
+
+        // Aplicar cédula por defecto si no se proporciona
+        $cedula = $this->billingAddressValidator->validateAndGetCedula($cedula, $orderId);
+        $cedulaBilling = $this->billingAddressValidator->validateAndGetCedula($cedulaBilling, $orderId);
+
         return [$cedula, $cedulaBilling];
     }
 
     private function mapCustomer($orderData, $shopifyCustomer, $cedulaBilling, $cedula)
     {
+        $orderId = $orderData['id'];
+
+        // Validar dirección de facturación con fallback a shipping
+        $validatedBillingAddress = $this->billingAddressValidator->validateAndGetBillingAddress(
+            $orderData['billing_address'],
+            $orderData['shipping_address']
+        );
+
+        // Fragmentar dirección por defecto del cliente
+        $defaultAddressFull = trim(
+            ($shopifyCustomer['defaultAddress']['address1'] ?? '') . ' ' .
+            ($shopifyCustomer['defaultAddress']['address2'] ?? '')
+        );
+        $defaultAddressSplit = $this->addressSplitter->splitAddress($defaultAddressFull, $orderId);
+
+        // Fragmentar dirección de facturación (después de validación)
+        $billingAddressFull = trim(
+            ($validatedBillingAddress['address1'] ?? '') . ' ' .
+            ($validatedBillingAddress['address2'] ?? '')
+        );
+        $billingAddressSplit = $this->addressSplitter->splitAddress($billingAddressFull, $orderId);
+
+        // Fragmentar dirección de envío
+        $shippingAddressFull = trim(
+            ($orderData['shipping_address']['address1'] ?? '') . ' ' .
+            ($orderData['shipping_address']['address2'] ?? '')
+        );
+        $shippingAddressSplit = $this->addressSplitter->splitAddress($shippingAddressFull, $orderId);
+
         $customer = new Customer();
-        $customer->order_id = $orderData['id'];
+        $customer->order_id = $orderId;
         $customer->customer_id = $orderData['customer']['id'] ?? 'NAN';
         $customer->company = $cedulaBilling;
         $customer->first_name = $shopifyCustomer['firstName'];
         $customer->last_name = $shopifyCustomer['lastName'];
         $customer->name = $shopifyCustomer['firstName'] . ' ' . $shopifyCustomer['lastName'];
         $customer->email = $orderData['email'];
-        $customer->address1 = $shopifyCustomer['defaultAddress']['address1'];
-        $customer->address2 = $shopifyCustomer['defaultAddress']['address2'] ?? '';
-        $customer->billing_address1 = $orderData['billing_address']['address1'];
-        $customer->billing_address2 = $orderData['billing_address']['address2'] ?? '';
-        $customer->shipping_address1 = $orderData['shipping_address']['address1'];
-        $customer->shipping_address2 = $orderData['shipping_address']['address2'] ?? '';
+        $customer->address1 = $defaultAddressSplit['address1'];
+        $customer->address2 = $defaultAddressSplit['address2'];
+        $customer->billing_address1 = $billingAddressSplit['address1'];
+        $customer->billing_address2 = $billingAddressSplit['address2'];
+        $customer->shipping_address1 = $shippingAddressSplit['address1'];
+        $customer->shipping_address2 = $shippingAddressSplit['address2'];
         $customer->currency = $orderData['currency'];
         $customer->phone = $orderData['shipping_address']['phone'];
         $customer->zip = $this->getZipCode($orderData['shipping_address']['city']);
