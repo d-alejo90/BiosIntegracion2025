@@ -4,7 +4,6 @@ namespace Tests\Unit\Services;
 
 use App\Services\BillingAddressValidatorService;
 use PHPUnit\Framework\TestCase;
-use org\bovigo\vfs\vfsStream;
 
 class BillingAddressValidatorServiceTest extends TestCase
 {
@@ -15,9 +14,8 @@ class BillingAddressValidatorServiceTest extends TestCase
     {
         parent::setUp();
 
-        // Create virtual filesystem for logs
-        $root = vfsStream::setup('logs');
-        $this->logFile = vfsStream::url('logs/test.log');
+        // Use simple filename for Logger (it creates directory structure)
+        $this->logFile = 'billing_validator_test_' . uniqid() . '.log';
 
         $this->service = new BillingAddressValidatorService($this->logFile);
     }
