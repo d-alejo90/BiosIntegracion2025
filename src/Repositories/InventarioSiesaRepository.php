@@ -19,7 +19,7 @@ class InventarioSiesaRepository
     /**
      * Obtiene los datos combinados etre product e vw_Inventario_Siesa.
      */
-    public function findInventoryBySkuListAndCia($skuList, $ciacod)
+    public function findInventoryBySkuListAndCia($skuList, $ciacod, $locationFilter = null)
     {
         // Corregir la asignación de ciacod
         $ciacod = ($ciacod == '232P') ? '20' : $ciacod;
@@ -28,27 +28,37 @@ class InventarioSiesaRepository
         $placeholders = implode(',', array_fill(0, count($skuList), '?'));
 
         $query = "SELECT
-          TRIM(ctrlCreateProducts.sku) as sku, 
-          ctrlCreateProducts.locacion as location, 
-          ctrlCreateProducts.prod_id as product_id, 
+          TRIM(ctrlCreateProducts.sku) as sku,
+          ctrlCreateProducts.locacion as location,
+          ctrlCreateProducts.prod_id as product_id,
           ctrlCreateProducts.inve_id as inventory_id,
-          ctrlCreateProducts.vari_id as variant_id, 
-          vw_Inventario_Siesa.Cod_Compañia as company_code, 
+          ctrlCreateProducts.vari_id as variant_id,
+          vw_Inventario_Siesa.Cod_Compañia as company_code,
           vw_Inventario_Siesa.available as available_qty_siesa
         FROM
           dbo.ctrlCreateProducts
         INNER JOIN
           dbo.vw_Inventario_Siesa
         ON
-          TRIM(ctrlCreateProducts.sku) = TRIM(vw_Inventario_Siesa.Sku) 
+          TRIM(ctrlCreateProducts.sku) = TRIM(vw_Inventario_Siesa.Sku)
           AND ctrlCreateProducts.locacion = vw_Inventario_Siesa.location
         WHERE
-          TRIM(vw_Inventario_Siesa.Sku) IN ($placeholders) 
-          AND vw_Inventario_Siesa.CODTIENDA = ?
-        ORDER BY sku DESC";
+          TRIM(vw_Inventario_Siesa.Sku) IN ($placeholders)
+          AND vw_Inventario_Siesa.CODTIENDA = ?";
+
+        // Add location filter if provided
+        if ($locationFilter !== null) {
+            $query .= " AND ctrlCreateProducts.locacion = ?";
+        }
+
+        $query .= " ORDER BY sku DESC";
 
         $stmt = $this->db->prepare($query);
         $params = array_merge($skuList, [$ciacod]);
+
+        if ($locationFilter !== null) {
+            $params[] = $locationFilter;
+        }
 
         // Habilitar errores en PDO
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

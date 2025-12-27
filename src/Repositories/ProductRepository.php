@@ -36,12 +36,23 @@ class ProductRepository
     /**
      * Obtiene productos por su cia_cod
      */
-    public function findByCia($cia_cod)
+    public function findByCia($cia_cod, $locationFilter = null)
     {
         $cia_cod = $cia_cod == '232P' ? '20' : $cia_cod; // Para esta tabla el cia_cod 232P se cambia por 20
         $query = "SELECT * FROM ctrlCreateProducts WHERE cia_cod = :cia_cod";
+
+        // Add location filter if provided
+        if ($locationFilter !== null) {
+            $query .= " AND locacion = :locacion";
+        }
+
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(':cia_cod', $cia_cod);
+
+        if ($locationFilter !== null) {
+            $stmt->bindParam(':locacion', $locationFilter);
+        }
+
         $stmt->execute();
         $products = [];
         while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {

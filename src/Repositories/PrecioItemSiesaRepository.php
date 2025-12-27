@@ -19,7 +19,7 @@ class PrecioItemSiesaRepository
     /**
      * Obtiene registros filtrados por Código de Compañía.
      */
-    public function findPricesBySkuListAndCia($skuList, $codCompania)
+    public function findPricesBySkuListAndCia($skuList, $codCompania, $locationFilter = null)
     {
         // Corregir la asignación de codCompania
         $codCompania = ($codCompania == '232P') ? '20' : $codCompania;
@@ -27,7 +27,7 @@ class PrecioItemSiesaRepository
         // Generar los placeholders (?,?,?)
         $placeholders = implode(',', array_fill(0, count($skuList), '?'));
 
-        $query = "SELECT 
+        $query = "SELECT
           pis.Cod_Compañia as cod_compania,
           pis.Compañia as compania,
           pis.precio as precio,
@@ -37,13 +37,23 @@ class PrecioItemSiesaRepository
           pis.bodega as bodega,
           pis.location as location,
           pis.CODTIENDA as cod_tienda
-          FROM vw_Precios_Items_Siesa as pis 
+          FROM vw_Precios_Items_Siesa as pis
           WHERE TRIM(pis.sku) IN ($placeholders)
-          AND pis.CODTIENDA = ?
-          ORDER BY pis.sku DESC";
+          AND pis.CODTIENDA = ?";
+
+        // Add location filter if provided
+        if ($locationFilter !== null) {
+            $query .= " AND pis.location = ?";
+        }
+
+        $query .= " ORDER BY pis.sku DESC";
 
         $stmt = $this->db->prepare($query);
         $params = array_merge($skuList, [$codCompania]);
+
+        if ($locationFilter !== null) {
+            $params[] = $locationFilter;
+        }
 
         // Habilitar errores en PDO
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);

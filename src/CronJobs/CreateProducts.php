@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Helpers\StoreConfigFactory;
 use App\Helpers\ShopifyHelper;
 use App\Helpers\Logger;
+use App\Helpers\LocationHelper;
 use App\Config\Constants;
 
 class CreateProducts
@@ -23,8 +24,9 @@ class CreateProducts
     private $storeName;
     private $skuList;
     private $saveMode;
+    private $locationFilter;
 
-    public function __construct($storeUrl, $skuList = null, $saveMode = true)
+    public function __construct($storeUrl, $skuList = null, $saveMode = true, $locationFilter = null)
     {
         $this->itemSiesaRepository = new ItemSiesaRepository();
         $this->productRepository = new ProductRepository();
@@ -38,11 +40,42 @@ class CreateProducts
         $this->logFile = "cron_create_products_{$this->storeName}.txt";
         $this->skuList = $skuList;
         $this->saveMode = $saveMode;
+
+        // Validate and normalize location filter
+        if ($locationFilter !== null) {
+            $normalized = LocationHelper::normalizeLocation($locationFilter, $this->storeName);
+
+            if ($normalized === null) {
+                // Invalid location - terminate with error
+                $validLocations = implode(", ", array_keys(Constants::BODEGAS[$this->storeName]));
+                $errorMsg = "Invalid location filter: '$locationFilter'. Valid locations for $this->storeName: $validLocations";
+                Logger::log($this->logFile, "ERROR: $errorMsg");
+                echo "ERROR: $errorMsg\n";
+                exit(1);
+            }
+
+            $this->locationFilter = $normalized;
+            $locationName = LocationHelper::getLocationName($normalized, $this->storeName);
+            Logger::log($this->logFile, "Location filter active: $locationName ($normalized)");
+        } else {
+            $this->locationFilter = null;
+        }
     }
 
     public function run()
     {
         Logger::log($this->logFile, "Start Run " . date('Y-m-d H:i:s'));
+
+        // Log location filter status
+        if ($this->locationFilter !== null) {
+            $locationName = LocationHelper::getLocationName($this->locationFilter, $this->storeName);
+            Logger::log($this->logFile, "Processing only location: $locationName ($this->locationFilter)");
+            echo "Processing only location: $locationName ($this->locationFilter)\n";
+        } else {
+            Logger::log($this->logFile, "Processing ALL locations");
+            echo "Processing ALL locations\n";
+        }
+
         try {
             echo 'Start Run CreateProducts for ' . $this->storeName . ' ' . date('Y-m-d H:i:s') . "\n";
             $cronName = 'crear_productos_' . $this->storeName;
@@ -70,9 +103,9 @@ class CreateProducts
     private function getSiesaProducts(): array
     {
         if ($this->skuList) {
-            return $this->itemSiesaRepository->findByCiaAndSkus($this->codigoCia, $this->skuList);
+            return $this->itemSiesaRepository->findByCiaAndSkus($this->codigoCia, $this->skuList, $this->locationFilter);
         }
-        return $this->itemSiesaRepository->findByCia($this->codigoCia);
+        return $this->itemSiesaRepository->findByCia($this->codigoCia, $this->locationFilter);
     }
 
     private function groupProducts(array $products): array

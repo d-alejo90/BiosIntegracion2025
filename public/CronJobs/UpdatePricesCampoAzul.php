@@ -5,5 +5,6 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 use App\CronJobs\UpdatePrices;
 
 $storeUrl = 'friko-ecommerce.myshopify.com';
-$cronJob = new UpdatePrices($storeUrl);
+$location = $_GET["location"] ?? null;
+$cronJob = new UpdatePrices($storeUrl, true, $location);
 $cronJob->run();

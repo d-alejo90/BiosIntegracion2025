@@ -98,6 +98,69 @@ Each cron job has store-specific entry points:
 - Mizooco endpoints: `CreateProductsMizooco.php`, `UpdateInventoryMizooco.php`, `UpdatePricesMizooco.php`, `ProcessFulfillmentsMizooco.php`
 - Entry points pass store URL to corresponding CronJob class in `src/CronJobs/`
 
+### Location Filtering in Cron Jobs
+
+All cron jobs support optional location filtering via GET parameter. This allows processing inventory, products, and prices for specific warehouses/bodegas instead of all locations.
+
+**Usage:**
+```bash
+# Process all locations (default behavior - backward compatible)
+/UpdateInventoryCampoAzul.php
+
+# Process specific location by ID
+/UpdateInventoryCampoAzul.php?location=64213581870
+
+# Process specific location by name (case-insensitive)
+/UpdateInventoryCampoAzul.php?location=Barranquilla
+
+# Combine with SKU filtering (CreateProducts only)
+/CreateProductsCampoAzul.php?skus=ABC123,DEF456&location=Suba-Bogota
+```
+
+**Valid Locations:**
+
+*Campo Azul (7 locations):*
+- `64213581870` → Barranquilla
+- `60916105262` → Suba-Bogota
+- `61816963118` → Bucaramanga-Concordia
+- `60906635310` → Rionegro
+- `60916072494` → Minorista
+- `61816995886` → Eje-Cafetero-Pinares
+- `65620377646` → Campo-Azul-Vegas
+
+*Mizooco (6 locations):*
+- `89995608360` → Barranquilla
+- `89918046504` → Bogotá
+- `102061080872` → Bucaramanga
+- `91807318312` → Cali
+- `89917882664` → Medellín
+- `102061048104` → Pereira
+
+**Supported Cron Jobs:**
+- ✅ `UpdateInventory` - Filters inventory updates by location
+- ✅ `CreateProducts` - Filters product creation/updates by location
+- ✅ `UpdatePrices` - Filters price updates by location
+
+**Note:** `ProcessFulfillments` does not support location filtering as fulfillments are processed per complete order, not per warehouse.
+
+**Implementation Details:**
+- Location parameter accepts both ID and name (normalized internally)
+- Invalid location terminates execution with error message listing valid options
+- SQL-level filtering for optimal performance (reduces data transfer and API calls)
+- 100% backward compatible - omitting parameter processes all locations
+
+**Example Use Cases:**
+```bash
+# Update inventory for high-traffic warehouse only
+/UpdateInventoryCampoAzul.php?location=Minorista
+
+# Sync products for new warehouse
+/CreateProductsMizooco.php?location=Cali
+
+# Update prices for specific SKUs in one location
+/CreateProductsCampoAzul.php?skus=SKU1,SKU2&location=64213581870
+```
+
 ### Database Integration
 
 - Uses SQL Server with PDO
