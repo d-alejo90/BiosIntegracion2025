@@ -16,6 +16,9 @@ class Customer
     public $billing_address2;
     public $shipping_address1;
     public $shipping_address2;
+    public $default_full_address;
+    public $billing_full_address;
+    public $shipping_full_address;
     public $currency;
     public $phone;
     public $zip;

@@ -214,25 +214,25 @@ class CreateOrderService
         );
 
         // Fragmentar dirección por defecto del cliente
-        $defaultAddressFull = trim(
-            ($shopifyCustomer['defaultAddress']['address1'] ?? '') . ' ' .
-            ($shopifyCustomer['defaultAddress']['address2'] ?? '')
+        $defaultAddressSplit = $this->addressSplitter->splitAddressWithOriginal(
+            $shopifyCustomer['defaultAddress']['address1'] ?? '',
+            $shopifyCustomer['defaultAddress']['address2'] ?? null,
+            $orderId
         );
-        $defaultAddressSplit = $this->addressSplitter->splitAddress($defaultAddressFull, $orderId);
 
         // Fragmentar dirección de facturación (después de validación)
-        $billingAddressFull = trim(
-            ($validatedBillingAddress['address1'] ?? '') . ' ' .
-            ($validatedBillingAddress['address2'] ?? '')
+        $billingAddressSplit = $this->addressSplitter->splitAddressWithOriginal(
+            $validatedBillingAddress['address1'] ?? '',
+            $validatedBillingAddress['address2'] ?? null,
+            $orderId
         );
-        $billingAddressSplit = $this->addressSplitter->splitAddress($billingAddressFull, $orderId);
 
         // Fragmentar dirección de envío
-        $shippingAddressFull = trim(
-            ($orderData['shipping_address']['address1'] ?? '') . ' ' .
-            ($orderData['shipping_address']['address2'] ?? '')
+        $shippingAddressSplit = $this->addressSplitter->splitAddressWithOriginal(
+            $orderData['shipping_address']['address1'] ?? '',
+            $orderData['shipping_address']['address2'] ?? null,
+            $orderId
         );
-        $shippingAddressSplit = $this->addressSplitter->splitAddress($shippingAddressFull, $orderId);
 
         $customer = new Customer();
         $customer->order_id = $orderId;
@@ -244,10 +244,13 @@ class CreateOrderService
         $customer->email = $orderData['email'];
         $customer->address1 = $defaultAddressSplit['address1'];
         $customer->address2 = $defaultAddressSplit['address2'];
+        $customer->default_full_address = $defaultAddressSplit['full_address'];
         $customer->billing_address1 = $billingAddressSplit['address1'];
         $customer->billing_address2 = $billingAddressSplit['address2'];
+        $customer->billing_full_address = $billingAddressSplit['full_address'];
         $customer->shipping_address1 = $shippingAddressSplit['address1'];
         $customer->shipping_address2 = $shippingAddressSplit['address2'];
+        $customer->shipping_full_address = $shippingAddressSplit['full_address'];
         $customer->currency = $orderData['currency'];
         $customer->phone = $orderData['shipping_address']['phone'];
         $customer->zip = $this->getZipCode($orderData['shipping_address']['city']);
