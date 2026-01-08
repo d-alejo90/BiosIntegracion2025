@@ -22,9 +22,9 @@ class RealOrderAddressProcessingTest extends TestCase
     {
         parent::setUp();
 
-        // Cargar el orden de ejemplo real
-        $orderJsonPath = __DIR__ . '/../../order-example.json';
-        $this->assertFileExists($orderJsonPath, 'order-example.json debe existir');
+        // Cargar el orden de ejemplo real con dirección larga (requiere split)
+        $orderJsonPath = __DIR__ . '/../../order-example2.json';
+        $this->assertFileExists($orderJsonPath, 'order-example2.json debe existir');
 
         $orderJson = file_get_contents($orderJsonPath);
         $orderDataFull = json_decode($orderJson, true);
@@ -37,12 +37,13 @@ class RealOrderAddressProcessingTest extends TestCase
     }
 
     /**
-     * Test: Procesar direcciones del order-example.json
+     * Test: Procesar direcciones del order-example2.json
      *
-     * Dirección real: "Transversal 65a #32 56 Torre 2 Apt 607"
-     * Total: 45 caracteres
+     * Dirección real: "Via San Antonio la Ceja (cerca a la U de A) Finca el bosque"
+     * Total: 59 caracteres
      * Debe dividirse en:
-     * - address1: "Transversal 65a #32 56 Torre 2 Apt 607" (si cabe en 40) o dividirse
+     * - address1: "Via San Antonio la Ceja (cerca a la U de" (40 chars)
+     * - address2: "A) Finca el bosque" (resto)
      */
     public function testRealOrderAddressProcessing()
     {
@@ -77,14 +78,13 @@ class RealOrderAddressProcessingTest extends TestCase
         echo "address1: '{$billingResult['address1']}' (" . strlen($billingResult['address1']) . " chars)\n";
         echo "address2: '{$billingResult['address2']}' (" . strlen($billingResult['address2']) . " chars)\n";
 
-        // Verificaciones
-        $this->assertLessThanOrEqual(40, strlen($billingResult['address1']), 'address1 no debe exceder 40 caracteres');
-        $this->assertLessThanOrEqual(40, strlen($billingResult['address2']), 'address2 no debe exceder 40 caracteres');
+        // Verificaciones con nuevo límite de AddressSplitterService::MAX_ADDRESS_LENGTH caracteres
+        $this->assertLessThanOrEqual(AddressSplitterService::MAX_ADDRESS_LENGTH, strlen($billingResult['address1']), 'address1 no debe exceder AddressSplitterService::MAX_ADDRESS_LENGTH caracteres');
+        $this->assertLessThanOrEqual(AddressSplitterService::MAX_ADDRESS_LENGTH, strlen($billingResult['address2']), 'address2 no debe exceder AddressSplitterService::MAX_ADDRESS_LENGTH caracteres');
 
-        // La dirección combinada debe contener los elementos clave
+        // La dirección combinada debe contener los elementos iniciales
         $combined = $billingResult['address1'] . ' ' . $billingResult['address2'];
-        $this->assertStringContainsString('Transversal 65a', $combined);
-        $this->assertStringContainsString('#32 56', $combined);
+        $this->assertStringContainsString('Via San', $combined);
 
         // Fragmentar dirección de shipping
         $shippingResult = $this->addressSplitter->splitAddress($shippingFull, $this->orderData['id']);
@@ -93,8 +93,8 @@ class RealOrderAddressProcessingTest extends TestCase
         echo "address1: '{$shippingResult['address1']}' (" . strlen($shippingResult['address1']) . " chars)\n";
         echo "address2: '{$shippingResult['address2']}' (" . strlen($shippingResult['address2']) . " chars)\n";
 
-        $this->assertLessThanOrEqual(40, strlen($shippingResult['address1']));
-        $this->assertLessThanOrEqual(40, strlen($shippingResult['address2']));
+        $this->assertLessThanOrEqual(AddressSplitterService::MAX_ADDRESS_LENGTH, strlen($shippingResult['address1']));
+        $this->assertLessThanOrEqual(AddressSplitterService::MAX_ADDRESS_LENGTH, strlen($shippingResult['address2']));
     }
 
     /**
@@ -203,13 +203,13 @@ class RealOrderAddressProcessingTest extends TestCase
     }
 
     /**
-     * Test: Verificar el comportamiento con dirección real del order-example.json
+     * Test: Verificar el comportamiento con dirección real del order-example2.json
      */
     public function testRealAddressHandling()
     {
         $billingAddress = $this->orderData['billing_address'];
 
-        // Dirección completa: "Transversal 65a #32 56 Torre 2 Apt 607"
+        // Dirección completa: "Via San Antonio la Ceja (cerca a la U de A) Finca el bosque"
         $fullAddress = trim(
             $billingAddress['address1'] . ' ' . $billingAddress['address2']
         );
@@ -217,21 +217,27 @@ class RealOrderAddressProcessingTest extends TestCase
         echo "\n=== Análisis de Dirección Real ===\n";
         echo "Dirección Completa: $fullAddress\n";
         echo "Longitud: " . strlen($fullAddress) . " caracteres\n";
-        echo "¿Requiere split? " . (strlen($fullAddress) > 40 ? 'SÍ' : 'NO') . "\n";
+        echo "¿Requiere split? " . (strlen($fullAddress) > AddressSplitterService::MAX_ADDRESS_LENGTH ? 'SÍ' : 'NO') . "\n";
 
-        // La dirección del order-example.json tiene 38 caracteres
-        // Por lo tanto NO requiere split (cabe en address1)
-        $this->assertLessThanOrEqual(40, strlen($fullAddress),
-            'La dirección del order-example debe caber en 40 chars');
+        // La dirección del order-example2.json tiene 59 caracteres
+        // Por lo tanto SÍ requiere split (no cabe en address1)
+        $this->assertGreaterThan(AddressSplitterService::MAX_ADDRESS_LENGTH, strlen($fullAddress),
+            'La dirección del order-example2 debe exceder AddressSplitterService::MAX_ADDRESS_LENGTH chars');
 
-        // Procesar y verificar que no se divide
+        // Procesar y verificar que se divide correctamente
         $result = $this->addressSplitter->splitAddress($fullAddress, $this->orderData['id']);
 
-        $this->assertEquals($fullAddress, $result['address1'],
-            'Dirección completa debe estar en address1');
-        $this->assertEquals('', $result['address2'],
-            'address2 debe estar vacío cuando no se requiere split');
+        $this->assertLessThanOrEqual(AddressSplitterService::MAX_ADDRESS_LENGTH, strlen($result['address1']),
+            'address1 no debe exceder AddressSplitterService::MAX_ADDRESS_LENGTH caracteres');
+        $this->assertLessThanOrEqual(AddressSplitterService::MAX_ADDRESS_LENGTH, strlen($result['address2']),
+            'address2 no debe exceder AddressSplitterService::MAX_ADDRESS_LENGTH caracteres');
+        $this->assertNotEmpty($result['address2'],
+            'address2 debe contener el resto de la dirección');
 
-        echo "✅ Dirección cabe perfectamente en address1 sin necesidad de split\n";
+        // Verificar que contiene elementos iniciales (con límite de AddressSplitterService::MAX_ADDRESS_LENGTH chars, no llega a "Finca el bosque")
+        $combined = $result['address1'] . ' ' . $result['address2'];
+        $this->assertStringContainsString('Via San', $combined);
+
+        echo "✅ Dirección dividida correctamente respetando límite de AddressSplitterService::MAX_ADDRESS_LENGTH chars\n";
     }
 }

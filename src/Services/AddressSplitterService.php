@@ -6,8 +6,8 @@ use App\Helpers\Logger;
 
 class AddressSplitterService
 {
-    private const MAX_ADDRESS_LENGTH = 40;
-    private const MAX_TOTAL_LENGTH = 80;
+    public const MAX_ADDRESS_LENGTH = 40;
+    public const MAX_TOTAL_LENGTH = 80;
 
     private string $logFile;
 
@@ -106,6 +106,176 @@ class AddressSplitterService
     {
         $orderInfo = $orderId ? " for order $orderId" : "";
         $message = "WARNING: Address truncated$orderInfo. Full address: $fullAddress (Length: " . strlen($fullAddress) . " chars)";
+        Logger::log($this->logFile, $message);
+    }
+
+    /**
+     * Divide una dirección considerando si address2 ya existía en el payload original
+     *
+     * Maneja dos escenarios:
+     * A) address2 NO existía: divide fullAddress en address1 (40 chars) y address2 (resto)
+     * B) address2 SÍ existía: trunca ambos a 40 caracteres independientemente
+     *
+     * @param string $address1Original Dirección 1 del payload de Shopify
+     * @param string|null $address2Original Dirección 2 del payload (puede ser null/vacío)
+     * @param string|null $orderId ID de la orden para logging (opcional)
+     * @return array Array con keys: address1, address2, full_address, was_split, had_original_address2
+     */
+    public function splitAddressWithOriginal(
+        string $address1Original,
+        ?string $address2Original,
+        ?string $orderId = null
+    ): array
+    {
+        $address1Original = trim($address1Original);
+        $address2Original = trim($address2Original ?? '');
+
+        // Construir dirección completa (siempre sin pérdida de información)
+        $fullAddress = $address1Original;
+        if (!empty($address2Original)) {
+            $fullAddress .= ' ' . $address2Original;
+        }
+
+        $hadOriginalAddress2 = !empty($address2Original);
+
+        // ESCENARIO A: address2 NO existía en payload original
+        if (!$hadOriginalAddress2) {
+            return $this->handleScenarioA($fullAddress, $orderId);
+        }
+
+        // ESCENARIO B: address2 SÍ existía en payload original
+        return $this->handleScenarioB($address1Original, $address2Original, $fullAddress, $orderId);
+    }
+
+    /**
+     * Escenario A: address2 NO existía - divide fullAddress en dos partes
+     *
+     * @param string $fullAddress Dirección completa a dividir
+     * @param string|null $orderId ID de orden para logging
+     * @return array
+     */
+    private function handleScenarioA(string $fullAddress, ?string $orderId): array
+    {
+        // Si cabe completa en address1, no dividir
+        if (strlen($fullAddress) <= self::MAX_ADDRESS_LENGTH) {
+            return [
+                'address1' => $fullAddress,
+                'address2' => '',
+                'full_address' => $fullAddress,
+                'was_split' => false,
+                'had_original_address2' => false
+            ];
+        }
+
+        // Dividir en word boundary
+        $split = $this->splitAtWordBoundary($fullAddress, self::MAX_ADDRESS_LENGTH);
+        $address1 = $split['address1'];
+        $address2Remaining = $split['address2'];
+
+        // Si address2 también excede límite, truncar
+        $address2 = $this->truncateToLimit($address2Remaining, self::MAX_ADDRESS_LENGTH);
+
+        // Log si hay texto truncado
+        if (strlen($address2Remaining) > self::MAX_ADDRESS_LENGTH) {
+            $this->logAddressSplit($fullAddress, $address1, $address2, $orderId, 'split');
+        }
+
+        return [
+            'address1' => $address1,
+            'address2' => $address2,
+            'full_address' => $fullAddress,
+            'was_split' => true,
+            'had_original_address2' => false
+        ];
+    }
+
+    /**
+     * Escenario B: address2 SÍ existía - truncar ambos independientemente
+     *
+     * @param string $address1Original Address1 original
+     * @param string $address2Original Address2 original
+     * @param string $fullAddress Dirección completa combinada
+     * @param string|null $orderId ID de orden para logging
+     * @return array
+     */
+    private function handleScenarioB(
+        string $address1Original,
+        string $address2Original,
+        string $fullAddress,
+        ?string $orderId
+    ): array
+    {
+        $address1 = $this->truncateToLimit($address1Original, self::MAX_ADDRESS_LENGTH);
+        $address2 = $this->truncateToLimit($address2Original, self::MAX_ADDRESS_LENGTH);
+
+        // Log si se truncó alguno
+        $wasTruncated =
+            strlen($address1Original) > self::MAX_ADDRESS_LENGTH ||
+            strlen($address2Original) > self::MAX_ADDRESS_LENGTH;
+
+        if ($wasTruncated) {
+            $this->logAddressSplit($fullAddress, $address1, $address2, $orderId, 'truncate');
+        }
+
+        return [
+            'address1' => $address1,
+            'address2' => $address2,
+            'full_address' => $fullAddress,
+            'was_split' => false,
+            'had_original_address2' => true
+        ];
+    }
+
+    /**
+     * Trunca un texto al límite especificado respetando word boundary
+     *
+     * @param string $text Texto a truncar
+     * @param int $maxLength Longitud máxima
+     * @return string Texto truncado
+     */
+    private function truncateToLimit(string $text, int $maxLength): string
+    {
+        if (strlen($text) <= $maxLength) {
+            return $text;
+        }
+
+        // Intentar cortar en word boundary
+        $split = $this->splitAtWordBoundary($text, $maxLength);
+        return $split['address1'];
+    }
+
+    /**
+     * Registra información sobre división o truncamiento de dirección
+     *
+     * @param string $fullAddress Dirección completa
+     * @param string $address1 Address1 resultante
+     * @param string $address2 Address2 resultante
+     * @param string|null $orderId ID de orden
+     * @param string $type Tipo: 'split' o 'truncate'
+     * @return void
+     */
+    private function logAddressSplit(
+        string $fullAddress,
+        string $address1,
+        string $address2,
+        ?string $orderId,
+        string $type
+    ): void
+    {
+        $orderInfo = $orderId ? " for order $orderId" : "";
+
+        if ($type === 'split') {
+            $message = "INFO: Address split from single field{$orderInfo}. " .
+                       "Full: '$fullAddress' (" . strlen($fullAddress) . " chars) → " .
+                       "Address1: '$address1' (" . strlen($address1) . " chars), " .
+                       "Address2: '$address2' (" . strlen($address2) . " chars)";
+        } else {
+            $message = "WARNING: Address truncated{$orderInfo} (address2 already existed). " .
+                       "Full: '$fullAddress' (" . strlen($fullAddress) . " chars) → " .
+                       "Address1: '$address1' (" . strlen($address1) . " chars), " .
+                       "Address2: '$address2' (" . strlen($address2) . " chars)";
+        }
+
         Logger::log($this->logFile, $message);
     }
 }
