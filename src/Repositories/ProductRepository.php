@@ -124,10 +124,14 @@ class ProductRepository
 
     /**
      * Crea un nuevo producto.
+     *
+     * @param Product $product Producto a crear
+     * @return bool True si se creó exitosamente
+     * @throws \PDOException Si falla el INSERT en la base de datos
      */
     public function create(Product $product)
     {
-        $query = "INSERT INTO ctrlCreateProducts (sku, locacion, nota, audit_date, estado, prod_id, inve_id, vari_id, cia_cod) 
+        $query = "INSERT INTO ctrlCreateProducts (sku, locacion, nota, audit_date, estado, prod_id, inve_id, vari_id, cia_cod)
                   VALUES (:sku, :locacion, :nota, GETDATE(), :estado, :prod_id, :inve_id, :vari_id, :cia_cod)";
         $stmt = $this->db->prepare($query);
 
@@ -141,7 +145,22 @@ class ProductRepository
         $stmt->bindParam(':vari_id', $product->vari_id);
         $stmt->bindParam(':cia_cod', $product->cia_cod);
 
-        return $stmt->execute();
+        $result = $stmt->execute();
+
+        // Lanzar excepción si execute() falla
+        if (!$result) {
+            $errorInfo = $stmt->errorInfo();
+            $errorMessage = sprintf(
+                "Failed to create product in ctrlCreateProducts. SKU: %s, Location: %s, SQLSTATE: %s, Error: %s",
+                $product->sku,
+                $product->locacion,
+                $errorInfo[0] ?? 'UNKNOWN',
+                $errorInfo[2] ?? 'No error details available'
+            );
+            throw new \PDOException($errorMessage);
+        }
+
+        return $result;
     }
 
     /**

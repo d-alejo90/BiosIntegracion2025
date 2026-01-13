@@ -452,26 +452,278 @@ class CreateProducts
 
     private function saveProductsFromResponses(array $shopifyResponses)
     {
+        $successCount = 0;
+        $failureCount = 0;
+
         foreach ($shopifyResponses as $response) {
-            if (isset($response['data']['productSet']['product']['variants']['nodes'])) {
-                foreach ($response['data']['productSet']['product']['variants']['nodes'] as $node) {
-                    $productId = $response['data']['productSet']['product']['id'];
-                    $product = $this->mapProductFromNode($node, $productId);
-                    Logger::log($this->logFile, "Creating product: " . $product->sku);
-                    Logger::log($this->logFile, "Product: " . json_encode($product));
-                    $this->productRepository->create($product);
-                }
+            // Validar estructura de respuesta
+            if (!is_array($response) || !isset($response['data'])) {
+                Logger::log($this->logFile, "ERROR: Invalid response structure: " . json_encode($response));
+                $failureCount++;
+                continue;
             }
-            if (isset($response['data']['productVariantsBulkCreate']['productVariants'])) {
-                foreach ($response['data']['productVariantsBulkCreate']['productVariants'] as $variant) {
-                    $productId = $response['data']['productVariantsBulkCreate']['product']['id'];
-                    $product = $this->mapProductFromNode($variant, $productId);
-                    Logger::log($this->logFile, "Creating product variant: " . $product->sku);
-                    Logger::log($this->logFile, "Product variant: " . json_encode($product));
-                    $this->productRepository->create($product);
-                }
+
+            // Procesar productSet (productos nuevos)
+            if (isset($response['data']['productSet'])) {
+                $result = $this->processProductSetResponse($response['data']['productSet']);
+                $successCount += $result['success'];
+                $failureCount += $result['failure'];
+            }
+
+            // Procesar productVariantsBulkCreate (variantes nuevas)
+            if (isset($response['data']['productVariantsBulkCreate'])) {
+                $result = $this->processProductVariantsResponse($response['data']['productVariantsBulkCreate']);
+                $successCount += $result['success'];
+                $failureCount += $result['failure'];
             }
         }
+
+        // Log de resumen
+        Logger::log($this->logFile, sprintf(
+            "Save summary - Success: %d, Failures: %d",
+            $successCount,
+            $failureCount
+        ));
+        echo "Products saved - Success: $successCount, Failures: $failureCount\n";
+    }
+
+    /**
+     * Procesa respuesta de productSet y guarda variantes en DB
+     *
+     * @param array $productSetData Data from response['data']['productSet']
+     * @return array ['success' => int, 'failure' => int]
+     */
+    private function processProductSetResponse(array $productSetData): array
+    {
+        $successCount = 0;
+        $failureCount = 0;
+
+        // Verificar userErrors ANTES de procesar
+        if (isset($productSetData['userErrors']) && !empty($productSetData['userErrors'])) {
+            Logger::log($this->logFile, "ERROR: Shopify userErrors in productSet: " . json_encode($productSetData['userErrors']));
+            // NO procesar si hay userErrors - el producto NO se creó en Shopify
+            return ['success' => 0, 'failure' => 1];
+        }
+
+        // Validar que el producto y variantes existen
+        if (!isset($productSetData['product']['variants']['nodes'])) {
+            Logger::log($this->logFile, "WARNING: No variants found in productSet response");
+            return ['success' => 0, 'failure' => 0];
+        }
+
+        $productId = $productSetData['product']['id'];
+        $variants = $productSetData['product']['variants']['nodes'];
+
+        Logger::log($this->logFile, sprintf(
+            "Processing productSet - Product ID: %s, Variants: %d",
+            $productId,
+            count($variants)
+        ));
+
+        // Procesar cada variante con retry logic
+        foreach ($variants as $node) {
+            $product = $this->mapProductFromNode($node, $productId);
+
+            Logger::log($this->logFile, "Creating product: " . $product->sku . " at location: " . $product->locacion);
+
+            // Intentar guardar con retry logic
+            $saved = $this->saveProductWithRetry($product);
+
+            if ($saved) {
+                $successCount++;
+                Logger::log($this->logFile, "✓ Successfully saved: " . $product->sku);
+            } else {
+                $failureCount++;
+                Logger::log($this->logFile, "✗ Failed to save after retries: " . $product->sku);
+            }
+        }
+
+        return ['success' => $successCount, 'failure' => $failureCount];
+    }
+
+    /**
+     * Procesa respuesta de productVariantsBulkCreate y guarda variantes en DB
+     *
+     * @param array $bulkCreateData Data from response['data']['productVariantsBulkCreate']
+     * @return array ['success' => int, 'failure' => int]
+     */
+    private function processProductVariantsResponse(array $bulkCreateData): array
+    {
+        $successCount = 0;
+        $failureCount = 0;
+
+        // Verificar userErrors ANTES de procesar
+        if (isset($bulkCreateData['userErrors']) && !empty($bulkCreateData['userErrors'])) {
+            Logger::log($this->logFile, "ERROR: Shopify userErrors in productVariantsBulkCreate: " . json_encode($bulkCreateData['userErrors']));
+            return ['success' => 0, 'failure' => 1];
+        }
+
+        // Validar que las variantes existen
+        if (!isset($bulkCreateData['productVariants']) || empty($bulkCreateData['productVariants'])) {
+            Logger::log($this->logFile, "WARNING: No productVariants found in response");
+            return ['success' => 0, 'failure' => 0];
+        }
+
+        $productId = $bulkCreateData['product']['id'];
+        $variants = $bulkCreateData['productVariants'];
+
+        Logger::log($this->logFile, sprintf(
+            "Processing productVariantsBulkCreate - Product ID: %s, Variants: %d",
+            $productId,
+            count($variants)
+        ));
+
+        // Procesar cada variante con retry logic
+        foreach ($variants as $variant) {
+            $product = $this->mapProductFromNode($variant, $productId);
+
+            Logger::log($this->logFile, "Creating product variant: " . $product->sku . " at location: " . $product->locacion);
+
+            $saved = $this->saveProductWithRetry($product);
+
+            if ($saved) {
+                $successCount++;
+                Logger::log($this->logFile, "✓ Successfully saved variant: " . $product->sku);
+            } else {
+                $failureCount++;
+                Logger::log($this->logFile, "✗ Failed to save variant after retries: " . $product->sku);
+            }
+        }
+
+        return ['success' => $successCount, 'failure' => $failureCount];
+    }
+
+    /**
+     * Intenta guardar un producto con retry logic para errores transitorios
+     *
+     * @param Product $product Producto a guardar
+     * @param int $maxRetries Número máximo de reintentos (default: 3)
+     * @return bool True si se guardó exitosamente, false si falló después de todos los reintentos
+     */
+    private function saveProductWithRetry(Product $product, int $maxRetries = 3): bool
+    {
+        $attempt = 0;
+
+        while ($attempt < $maxRetries) {
+            $attempt++;
+
+            try {
+                // Intentar crear el producto
+                $this->productRepository->create($product);
+
+                // Éxito: retornar true
+                if ($attempt > 1) {
+                    Logger::log($this->logFile, "SUCCESS on attempt $attempt for SKU: " . $product->sku);
+                }
+                return true;
+
+            } catch (\PDOException $e) {
+                // Capturar excepciones de PDO
+                $errorMessage = $e->getMessage();
+
+                // CASO 1: Error de duplicado (NO reintentar)
+                if ($this->isDuplicateKeyError($errorMessage)) {
+                    Logger::log($this->logFile, "DUPLICATE detected for SKU {$product->sku} at location {$product->locacion} - Skipping (not an error)");
+                    return true; // Considerar éxito porque ya existe
+                }
+
+                // CASO 2: Error de conexión o timeout (reintentar)
+                if ($this->isTransientError($errorMessage)) {
+                    Logger::log($this->logFile, "TRANSIENT ERROR on attempt $attempt/$maxRetries for SKU {$product->sku}: $errorMessage");
+
+                    if ($attempt < $maxRetries) {
+                        // Backoff de 1 segundo antes de reintentar
+                        Logger::log($this->logFile, "Retrying after 1 second...");
+                        sleep(1);
+                        continue; // Reintentar
+                    } else {
+                        // Máximo de reintentos alcanzado
+                        Logger::log($this->logFile, "FAILED after $maxRetries attempts for SKU {$product->sku}: $errorMessage");
+                        return false;
+                    }
+                }
+
+                // CASO 3: Error permanente (NO reintentar)
+                Logger::log($this->logFile, "PERMANENT ERROR for SKU {$product->sku}: $errorMessage");
+                Logger::log($this->logFile, "Product data: " . json_encode($product));
+                return false;
+
+            } catch (\Exception $e) {
+                // Capturar cualquier otra excepción
+                Logger::log($this->logFile, "UNEXPECTED ERROR for SKU {$product->sku}: " . $e->getMessage());
+                Logger::log($this->logFile, "Stack trace: " . $e->getTraceAsString());
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Determina si un error es de clave duplicada
+     *
+     * @param string $errorMessage Mensaje de error de PDO
+     * @return bool True si es un error de duplicado
+     */
+    private function isDuplicateKeyError(string $errorMessage): bool
+    {
+        // SQL Server códigos de error para duplicados:
+        // - 2627: Violation of PRIMARY KEY constraint
+        // - 2601: Cannot insert duplicate key row in object
+        $duplicateKeywords = [
+            'duplicate key',
+            'SQLSTATE[23000]',
+            'Violation of PRIMARY KEY constraint',
+            'Cannot insert duplicate key',
+            '2627',
+            '2601'
+        ];
+
+        $lowerMessage = strtolower($errorMessage);
+
+        foreach ($duplicateKeywords as $keyword) {
+            if (strpos($lowerMessage, strtolower($keyword)) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Determina si un error es transitorio y debería reintentarse
+     *
+     * @param string $errorMessage Mensaje de error de PDO
+     * @return bool True si es un error transitorio
+     */
+    private function isTransientError(string $errorMessage): bool
+    {
+        // Errores transitorios comunes:
+        // - Timeout de conexión
+        // - Conexión perdida
+        // - Deadlocks
+        // - Server no disponible temporalmente
+        $transientKeywords = [
+            'connection timeout',
+            'connection lost',
+            'deadlock',
+            'server has gone away',
+            'too many connections',
+            'connection refused',
+            'SQLSTATE[08',  // Connection errors
+            'SQLSTATE[40',  // Transaction rollback errors (deadlocks)
+            'Communication link failure'
+        ];
+
+        $lowerMessage = strtolower($errorMessage);
+
+        foreach ($transientKeywords as $keyword) {
+            if (strpos($lowerMessage, strtolower($keyword)) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function mapProductFromNode(array $node, string $productId): Product
