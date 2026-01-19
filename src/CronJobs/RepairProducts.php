@@ -1,28 +1,27 @@
 <?php
 
-/**
- * Script de reparación para la tabla ctrlCreateProducts
- *
- * Este script:
- * 1. Consulta productos en Shopify por SKU
- * 2. Compara con los registros existentes en ctrlCreateProducts
- * 3. Inserta los registros faltantes
- *
- * Uso:
- * php scripts/repair_products_table.php --store=campo-azul --skus=SKU1,SKU2,SKU3
- * php scripts/repair_products_table.php --store=mizooco --all
- * php scripts/repair_products_table.php --store=campo-azul --skus=SKU1,SKU2 --dry-run
- */
-
-require_once __DIR__ . '/../vendor/autoload.php';
+namespace App\CronJobs;
 
 use App\Repositories\ProductRepository;
+use App\Models\Product;
 use App\Helpers\StoreConfigFactory;
 use App\Helpers\ShopifyHelper;
 use App\Helpers\Logger;
-use App\Models\Product;
 
-class RepairProductsTable
+/**
+ * CronJob para reparar la tabla ctrlCreateProducts
+ *
+ * Este CronJob:
+ * 1. Consulta productos en Shopify por SKU o todos
+ * 2. Compara con los registros existentes en ctrlCreateProducts
+ * 3. Inserta los registros faltantes
+ *
+ * Uso via GET parameters:
+ * - skus: Lista de SKUs separados por coma (ej: SKU1,SKU2,SKU3)
+ * - all: Flag para procesar todos los productos (ej: all=1)
+ * - dry-run: Flag para previsualizar cambios sin aplicarlos (ej: dry-run=1)
+ */
+class RepairProducts
 {
     private $productRepository;
     private $shopifyHelper;
@@ -30,8 +29,10 @@ class RepairProductsTable
     private $codigoCia;
     private $logFile;
     private $dryRun;
+    private $skuList;
+    private $processAll;
 
-    public function __construct($storeUrl, $dryRun = false)
+    public function __construct($storeUrl, $skuList = null, $processAll = false, $dryRun = false)
     {
         $this->productRepository = new ProductRepository();
         $storeConfig = new StoreConfigFactory();
@@ -39,12 +40,57 @@ class RepairProductsTable
         $this->shopifyHelper = new ShopifyHelper($config['shopifyConfig']);
         $this->storeName = $config['storeName'];
         $this->codigoCia = $config['codigoCia'];
-        $this->logFile = "repair_products_table_{$this->storeName}.txt";
+        $this->logFile = "cron_repair_products_{$this->storeName}.txt";
         $this->dryRun = $dryRun;
+        $this->skuList = $skuList;
+        $this->processAll = $processAll;
+    }
 
-        Logger::log($this->logFile, "=== Repair Script Started ===");
+    /**
+     * Ejecuta el proceso de reparación
+     */
+    public function run()
+    {
+        Logger::log($this->logFile, "=== Repair Products Started ===");
         Logger::log($this->logFile, "Store: {$this->storeName}");
-        Logger::log($this->logFile, "Dry Run: " . ($dryRun ? 'YES' : 'NO'));
+        Logger::log($this->logFile, "Dry Run: " . ($this->dryRun ? 'YES' : 'NO'));
+
+        echo "=== Repair Products for {$this->storeName} ===\n";
+        echo "Dry Run: " . ($this->dryRun ? 'YES' : 'NO') . "\n";
+
+        try {
+            // Validar que se especificó modo de operación
+            if (!$this->processAll && empty($this->skuList)) {
+                $errorMsg = "Error: Debe especificar 'skus' o 'all' como parámetro GET.";
+                Logger::log($this->logFile, $errorMsg);
+                echo $errorMsg . "\n";
+                echo "Uso:\n";
+                echo "  ?skus=SKU1,SKU2,SKU3 - Reparar SKUs específicos\n";
+                echo "  ?all=1 - Reparar todos los productos\n";
+                echo "  ?dry-run=1 - Previsualizar sin aplicar cambios\n";
+                return;
+            }
+
+            $stats = [];
+
+            if ($this->processAll) {
+                $stats = $this->repairAll();
+            } else {
+                $skus = is_array($this->skuList)
+                    ? $this->skuList
+                    : array_map('trim', explode(',', $this->skuList));
+                $stats = $this->repairBySKUs($skus);
+            }
+
+            // Mostrar resumen
+            $this->printSummary($stats);
+
+        } catch (\Exception $e) {
+            Logger::log($this->logFile, "FATAL ERROR: " . $e->getMessage());
+            echo "FATAL ERROR: " . $e->getMessage() . "\n";
+        }
+
+        Logger::log($this->logFile, "=== Repair Products Ended ===\n");
     }
 
     /**
@@ -190,6 +236,13 @@ class RepairProductsTable
 
         foreach ($variants as $variant) {
             $sku = $variant['sku'];
+
+            // Skip variants without SKU
+            if (empty($sku)) {
+                Logger::log($this->logFile, "Skipping variant without SKU: " . $variant['id']);
+                continue;
+            }
+
             $variantId = $this->extractId($variant['id']);
             $productId = $this->extractId($variant['product']['id']);
             $inventoryItemId = $this->extractId($variant['inventoryItem']['id']);
@@ -217,7 +270,7 @@ class RepairProductsTable
                 $product = new Product();
                 $product->sku = $sku;
                 $product->locacion = $locationId;
-                $product->nota = 'Reparado por script - ' . date('Y-m-d H:i:s');
+                $product->nota = 'Reparado por CronJob - ' . date('Y-m-d H:i:s');
                 $product->audit_date = date('Y-m-d H:i:s');
                 $product->estado = '1';
                 $product->prod_id = $productId;
@@ -227,23 +280,28 @@ class RepairProductsTable
 
                 if ($this->dryRun) {
                     echo "  [DRY-RUN] Would create: SKU=$sku, Location=$locationId, Product=$productId, Variant=$variantId\n";
-                    Logger::log($this->logFile, "  [DRY-RUN] Would create record: " . json_encode($product));
+                    Logger::log($this->logFile, "  [DRY-RUN] Would create record for SKU $sku at location $locationId");
                     $created++;
                 } else {
                     try {
-                        $result = $this->productRepository->create($product);
-                        if ($result) {
-                            echo "  ✓ Successfully created\n";
-                            Logger::log($this->logFile, "  ✓ Successfully created record for SKU $sku at location $locationId");
-                            $created++;
+                        $this->productRepository->create($product);
+                        echo "  + Successfully created\n";
+                        Logger::log($this->logFile, "  + Successfully created record for SKU $sku at location $locationId");
+                        $created++;
+                    } catch (\PDOException $e) {
+                        // Verificar si es error de duplicado (ya existe)
+                        if ($this->isDuplicateKeyError($e->getMessage())) {
+                            echo "  ~ Already exists (duplicate key)\n";
+                            Logger::log($this->logFile, "  ~ Duplicate key for SKU $sku at location $locationId - treating as success");
+                            $skipped++;
                         } else {
-                            echo "  ✗ Failed to create (no exception but returned false)\n";
-                            Logger::log($this->logFile, "  ✗ Failed to create record for SKU $sku at location $locationId");
+                            echo "  ! Error: " . $e->getMessage() . "\n";
+                            Logger::log($this->logFile, "  ! Exception creating record: " . $e->getMessage());
                             $errors++;
                         }
                     } catch (\Exception $e) {
-                        echo "  ✗ Error: " . $e->getMessage() . "\n";
-                        Logger::log($this->logFile, "  ✗ Exception creating record: " . $e->getMessage());
+                        echo "  ! Error: " . $e->getMessage() . "\n";
+                        Logger::log($this->logFile, "  ! Exception creating record: " . $e->getMessage());
                         $errors++;
                     }
                 }
@@ -255,6 +313,31 @@ class RepairProductsTable
             'skipped' => $skipped,
             'errors' => $errors
         ];
+    }
+
+    /**
+     * Detecta si un error es de clave duplicada
+     */
+    private function isDuplicateKeyError(string $errorMessage): bool
+    {
+        $duplicateKeywords = [
+            'duplicate key',
+            'SQLSTATE[23000]',
+            'Violation of PRIMARY KEY constraint',
+            'Cannot insert duplicate key',
+            '2627',
+            '2601'
+        ];
+
+        $lowerMessage = strtolower($errorMessage);
+
+        foreach ($duplicateKeywords as $keyword) {
+            if (strpos($lowerMessage, strtolower($keyword)) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -334,82 +417,25 @@ class RepairProductsTable
 
         return $this->processVariants($allVariants);
     }
-}
 
-// ===== MAIN SCRIPT EXECUTION =====
+    /**
+     * Imprime el resumen de la operación
+     */
+    private function printSummary($stats)
+    {
+        echo "\n=== SUMMARY ===\n";
+        echo "Created: {$stats['created']}\n";
+        echo "Skipped (already exist): {$stats['skipped']}\n";
+        echo "Errors: {$stats['errors']}\n";
+        echo "\nTotal processed: " . ($stats['created'] + $stats['skipped'] + $stats['errors']) . "\n";
 
-function printUsage()
-{
-    echo "\nUsage:\n";
-    echo "  php scripts/repair_products_table.php --store=<store> --skus=<SKU1,SKU2,...>\n";
-    echo "  php scripts/repair_products_table.php --store=<store> --all\n";
-    echo "\nOptions:\n";
-    echo "  --store      Store to process (campo-azul or mizooco)\n";
-    echo "  --skus       Comma-separated list of SKUs to repair\n";
-    echo "  --all        Process all products in Shopify\n";
-    echo "  --dry-run    Preview changes without making them\n";
-    echo "\nExamples:\n";
-    echo "  php scripts/repair_products_table.php --store=campo-azul --skus=ABC123,DEF456\n";
-    echo "  php scripts/repair_products_table.php --store=mizooco --all --dry-run\n";
-    echo "\n";
-}
+        Logger::log($this->logFile, "SUMMARY - Created: {$stats['created']}, Skipped: {$stats['skipped']}, Errors: {$stats['errors']}");
 
-// Parse command line arguments
-$options = getopt('', ['store:', 'skus:', 'all', 'dry-run', 'help']);
+        if ($this->dryRun) {
+            echo "\n[DRY-RUN MODE] No changes were made to the database.\n";
+            echo "Run without dry-run=1 to apply changes.\n";
+        }
 
-if (isset($options['help']) || empty($options['store'])) {
-    printUsage();
-    exit(0);
-}
-
-$store = $options['store'];
-$dryRun = isset($options['dry-run']);
-
-// Validate store
-$storeUrls = [
-    'campo-azul' => 'campo-azul.myshopify.com',
-    'mizooco' => 'mi-zooco.myshopify.com'
-];
-
-if (!isset($storeUrls[$store])) {
-    echo "Error: Invalid store '$store'. Must be 'campo-azul' or 'mizooco'\n";
-    printUsage();
-    exit(1);
-}
-
-$storeUrl = $storeUrls[$store];
-
-try {
-    $repair = new RepairProductsTable($storeUrl, $dryRun);
-
-    if (isset($options['all'])) {
-        $stats = $repair->repairAll();
-    } elseif (isset($options['skus'])) {
-        $skus = explode(',', $options['skus']);
-        $skus = array_map('trim', $skus);
-        $stats = $repair->repairBySKUs($skus);
-    } else {
-        echo "Error: You must specify either --skus or --all\n";
-        printUsage();
-        exit(1);
+        echo "\nRepair completed!\n";
     }
-
-    // Print summary
-    echo "\n=== SUMMARY ===\n";
-    echo "Created: {$stats['created']}\n";
-    echo "Skipped (already exist): {$stats['skipped']}\n";
-    echo "Errors: {$stats['errors']}\n";
-    echo "\nTotal processed: " . ($stats['created'] + $stats['skipped'] + $stats['errors']) . "\n";
-
-    if ($dryRun) {
-        echo "\n[DRY-RUN MODE] No changes were made to the database.\n";
-        echo "Run without --dry-run to apply changes.\n";
-    }
-
-    echo "\nRepair completed successfully!\n";
-
-} catch (\Exception $e) {
-    echo "\nFATAL ERROR: " . $e->getMessage() . "\n";
-    echo $e->getTraceAsString() . "\n";
-    exit(1);
 }
