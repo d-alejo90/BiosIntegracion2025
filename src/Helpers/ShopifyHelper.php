@@ -13,6 +13,18 @@ class ShopifyHelper
     $this->shopify = new ShopifySDK($config);
   }
 
+  /**
+   * Ejecuta una query GraphQL genérica
+   *
+   * @param string $query La query GraphQL
+   * @param array $variables Variables para la query
+   * @return array Respuesta de Shopify
+   */
+  public function graphQL($query, $variables = [])
+  {
+    return $this->shopify->GraphQL->post($query, null, null, $variables);
+  }
+
 
   public function getShopifyOrderDataByOrderId($orderId)
   {
