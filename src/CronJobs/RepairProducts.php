@@ -106,7 +106,7 @@ class RepairProducts
 
         return [
             'query' => 'query GetProductVariantsBySKU($query: String!, $cursor: String) {
-                productVariants(first: 250, query: $query, after: $cursor) {
+                productVariants(first: 50, query: $query, after: $cursor) {
                     edges {
                         node {
                             id
@@ -116,7 +116,7 @@ class RepairProducts
                             }
                             inventoryItem {
                                 id
-                                inventoryLevels(first: 50) {
+                                inventoryLevels(first: 10) {
                                     nodes {
                                         location {
                                             id
@@ -146,19 +146,19 @@ class RepairProducts
     {
         return [
             'query' => 'query GetAllProductsWithVariants($cursor: String) {
-                products(first: 50, after: $cursor) {
+                products(first: 5, after: $cursor) {
                     edges {
                         node {
                             id
                             title
-                            variants(first: 100) {
+                            variants(first: 20) {
                                 edges {
                                     node {
                                         id
                                         sku
                                         inventoryItem {
                                             id
-                                            inventoryLevels(first: 50) {
+                                            inventoryLevels(first: 10) {
                                                 nodes {
                                                     location {
                                                         id
