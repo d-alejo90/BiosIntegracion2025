@@ -6,5 +6,7 @@ use App\CronJobs\UpdatePrices;
 
 $storeUrl = 'mizooco.myshopify.com';
 $location = $_GET["location"] ?? null;
-$cronJob = new UpdatePrices($storeUrl, true, $location);
+$dryrun = isset($_GET["dryrun"]) ? (bool)$_GET["dryrun"] : false;
+$saveMode = !$dryrun;
+$cronJob = new UpdatePrices($storeUrl, $saveMode, $location);
 $cronJob->run();

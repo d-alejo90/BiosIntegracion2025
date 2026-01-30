@@ -60,8 +60,14 @@ class UpdateInventory
     public function run()
     {
         $cronName = 'inventario_' . $this->storeName;
-        Logger::log($this->logFile, "Start Run $cronName " . date('Y-m-d H:i:s'));
-        echo "Start Run $cronName " . date('Y-m-d H:i:s') . "\n===========================\n";
+        $mode = $this->saveMode ? 'LIVE' : 'DRY-RUN';
+        Logger::log($this->logFile, "Start Run $cronName [$mode] " . date('Y-m-d H:i:s'));
+        echo "Start Run $cronName [$mode] " . date('Y-m-d H:i:s') . "\n===========================\n";
+
+        if (!$this->saveMode) {
+            Logger::log($this->logFile, "DRY-RUN MODE: No inventory changes will be made to Shopify");
+            echo "DRY-RUN MODE: No inventory changes will be made to Shopify\n";
+        }
 
         // Log location filter status
         if ($this->locationFilter !== null) {
@@ -156,7 +162,8 @@ class UpdateInventory
         }
 
         try {
-            Logger::log($this->logFile, "Ajuste de inventario (" . count($adjustmentChanges) . " items): " . json_encode($adjustmentChanges));
+            $prefix = $this->saveMode ? "" : "[DRY-RUN] ";
+            Logger::log($this->logFile, $prefix . "Ajuste de inventario (" . count($adjustmentChanges) . " items): " . json_encode($adjustmentChanges));
             $responses = $this->shopifyHelper->adjustInventoryQty($adjustmentChanges, $this->saveMode);
 
             // Procesar respuestas por batch

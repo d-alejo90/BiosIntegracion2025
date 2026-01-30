@@ -60,8 +60,14 @@ class UpdatePrices
     public function run()
     {
         $cronName = 'precios_' . $this->storeName;
-        Logger::log($this->logFile, "Start Run $cronName " . date('Y-m-d H:i:s'));
-        echo "Start Run $cronName " . date('Y-m-d H:i:s') . "\n===========================\n";
+        $mode = $this->saveMode ? 'LIVE' : 'DRY-RUN';
+        Logger::log($this->logFile, "Start Run $cronName [$mode] " . date('Y-m-d H:i:s'));
+        echo "Start Run $cronName [$mode] " . date('Y-m-d H:i:s') . "\n===========================\n";
+
+        if (!$this->saveMode) {
+            Logger::log($this->logFile, "DRY-RUN MODE: No changes will be made to Shopify");
+            echo "DRY-RUN MODE: No changes will be made to Shopify\n";
+        }
 
         // Log location filter status
         if ($this->locationFilter !== null) {
@@ -133,15 +139,17 @@ class UpdatePrices
 
         try {
             // Enviamos precios a Shopify
+            $prefix = $this->saveMode ? "" : "[DRY-RUN] ";
             foreach ($priceVariables as $priceVariable) {
-                Logger::log($this->logFile, "Updating prices for product: " . $priceVariable['productId']);
+                Logger::log($this->logFile, $prefix . "Updating prices for product: " . $priceVariable['productId']);
                 Logger::log($this->logFile, "Variants: " . json_encode($priceVariable));
                 $this->shopifyHelper->updateVariantPrices($priceVariable, $this->saveMode);
-                Logger::log($this->logFile, "Prices updated for product: " . $priceVariable['productId']);
+                Logger::log($this->logFile, $prefix . "Prices updated for product: " . $priceVariable['productId']);
             }
         } catch (\Exception $e) {
-            Logger::log($this->logFile, "Error Updating Prices: " . $e->getMessage());
-            echo "Error Updating Prices: " . $e->getMessage() . "\n";
+            $errorMsg = $this->saveMode ? "Error Updating Prices" : "Error in DRY-RUN Price Simulation";
+            Logger::log($this->logFile, "$errorMsg: " . $e->getMessage());
+            echo "$errorMsg: " . $e->getMessage() . "\n";
         }
     }
 }

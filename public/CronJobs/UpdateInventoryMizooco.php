@@ -6,5 +6,7 @@ use App\CronJobs\UpdateInventory;
 
 $storeUrl = 'mizooco.myshopify.com';
 $location = $_GET["location"] ?? null;
-$cronJob = new UpdateInventory($storeUrl, true, $location);
+$dryrun = isset($_GET["dryrun"]) ? (bool)$_GET["dryrun"] : false;
+$saveMode = !$dryrun;
+$cronJob = new UpdateInventory($storeUrl, $saveMode, $location);
 $cronJob->run();
